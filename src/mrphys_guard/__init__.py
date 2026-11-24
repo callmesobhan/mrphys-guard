@@ -9,28 +9,38 @@ from __future__ import annotations
 from mrphys_guard.ir import (
     AbstentionCode,
     AbstentionError,
+    ConflictCore,
     DistortionDecomposition,
     EREBoundaryRisk,
     ImplantConditionSpec,
+    JacobianUnwarpReport,
     MRSafetyLabel,
     MRSequenceSpec,
+    MultiBeamEREReport,
+    MultiImplantCSPVerdict,
+    PhaseUnwrapReport,
     ProvenanceRecord,
     SafetyCSPVerdict,
     ScannerFieldSpec,
     SCTAuditReport,
 )
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 
 __all__ = [
     "__version__",
     "AbstentionCode",
     "AbstentionError",
+    "ConflictCore",
     "DistortionDecomposition",
     "EREBoundaryRisk",
     "ImplantConditionSpec",
+    "JacobianUnwarpReport",
     "MRSafetyLabel",
     "MRSequenceSpec",
+    "MultiBeamEREReport",
+    "MultiImplantCSPVerdict",
+    "PhaseUnwrapReport",
     "ProvenanceRecord",
     "SafetyCSPVerdict",
     "ScannerFieldSpec",

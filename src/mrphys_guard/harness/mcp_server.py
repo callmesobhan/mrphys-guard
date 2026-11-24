@@ -31,19 +31,21 @@ from mrphys_guard.implant_safety_csp import (
     list_implant_profiles,
     lookup_implant_profile,
     verify_implant_safety_csp,
+    verify_multi_implant_safety_csp,
 )
 from mrphys_guard.ir import ImplantConditionSpec, MRSequenceSpec, ScannerFieldSpec
 from mrphys_guard.provenance import ProvenanceLedger
 from mrphys_guard.sct_ere_auditor import (
     audit_synthetic_ct,
     compute_ere_boundary_risk,
+    compute_multibeam_ere_cancellation,
     inject_sct_failure_modes,
 )
 from mrphys_guard.sobol_sensitivity import run_mr_uncertainty_sobol_suite
 
 SERVER_INFO = {
     "name": "mrphys-guard-mcp",
-    "version": "0.1.0",
+    "version": "0.2.0",
     "notice": "RESEARCH SOFTWARE — NOT A MEDICAL DEVICE.",
 }
 
@@ -143,6 +145,41 @@ MCP_TOOLS: list[dict[str, Any]] = [
                 "n_base": {"type": "integer", "default": 256},
                 "b0_T": {"type": "number", "default": 1.5},
                 "seed": {"type": "integer", "default": 2026},
+            },
+        },
+    },
+    {
+        "name": "mrphys_multibeam_ere_optimize",
+        "description": (
+            "Evaluate multi-beam IMRT/VMAT opposing-beam Lorentz-force ERE cancellation and "
+            "recommend lowest-ERE gantry angles at 1.5T or 0.35T."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "b0_T": {"type": "number", "default": 1.5},
+                "gantry_angles_deg": {
+                    "type": "array",
+                    "items": {"type": "number"},
+                    "default": [0.0, 51.0, 103.0, 154.0, 206.0, 257.0, 309.0],
+                },
+                "grid_size": {"type": "integer", "default": 32},
+            },
+        },
+    },
+    {
+        "name": "mrphys_verify_multi_implant_csp",
+        "description": (
+            "Formally verify a multi-sequence MR protocol simultaneously across multiple "
+            "co-existing implants, returning intersected limits, IEC PNS %, and UNSAT conflict cores."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "required": ["implant_ids", "sequences"],
+            "properties": {
+                "scanner": {"type": "object"},
+                "implant_ids": {"type": "array", "items": {"type": "string"}},
+                "sequences": {"type": "array", "items": {"type": "object"}},
             },
         },
     },
@@ -254,6 +291,28 @@ def _dispatch_tool(name: str, arguments: dict[str, Any]) -> dict[str, Any]:
             seed=int(arguments.get("seed", 2026)),
         )
         result = {k: v.model_dump(mode="json") for k, v in reports.items()}
+
+    elif name == "mrphys_multibeam_ere_optimize":
+        n = int(arguments.get("grid_size", 32))
+        vox = (160.0 / n, 160.0 / n, 120.0 / max(16, int(n * 0.75)))
+        shape = (n, n, max(16, int(n * 0.75)))
+        phantom = build_pelvic_prostate_susceptibility_phantom(shape=shape, voxel_size_mm=vox)
+        angles = [float(a) for a in arguments.get("gantry_angles_deg", [0.0, 51.0, 103.0, 154.0, 206.0, 257.0, 309.0])]
+        mb_report, _ = compute_multibeam_ere_cancellation(
+            ct_or_sct_hu=phantom["ct_hu"],
+            voxel_size_mm=vox,
+            gantry_angles_deg=angles,
+            b0_T=float(arguments.get("b0_T", 1.5)),
+            body_mask=phantom["body_mask"],
+        )
+        result = mb_report.model_dump(mode="json")
+
+    elif name == "mrphys_verify_multi_implant_csp":
+        scanner = ScannerFieldSpec(**arguments.get("scanner", {}))
+        implants = [lookup_implant_profile(str(i)) for i in arguments["implant_ids"]]
+        sequences = [MRSequenceSpec(**s) for s in arguments["sequences"]]
+        mv = verify_multi_implant_safety_csp(scanner, sequences, implants)
+        result = mv.model_dump(mode="json")
 
     else:
         raise KeyError(f"Unknown MCP tool: {name}")

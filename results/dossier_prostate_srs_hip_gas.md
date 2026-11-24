@@ -6,7 +6,7 @@
 - **Title:** 1.5T MR-Only Prostate SRS with Bilateral Ti Hip Prostheses & Rectal Gas
 - **Scanner:** 1.5T MR-Linac (High-Field Adaptive RT) ($B_0 = 1.5\text{ T}$, $|dB/dx|_{\max} = 18.5\text{ T/m}$)
 - **Implant:** Generic Ti-6Al-4V Bilateral Hip Prosthesis (1.5T/3.0T) (`MR_CONDITIONAL`)
-- **Co-Design Status:** **CONVERGED** | **Critic-Verifier Gate:** **APPROVED** (`15/15`)
+- **Co-Design Status:** **CONVERGED** | **Critic-Verifier Gate:** **APPROVED** (`17/17`)
 
 ## Before vs. After Protocol Metrics
 
@@ -21,7 +21,7 @@
 
 ## Critic-Verifier Findings
 
-- Formal IEC 60601-2-33 CSP verified: 13/13 PASS.
+- Formal IEC 60601-2-33 CSP verified: 15/15 PASS.
 - SRS geometric fidelity verified: max |Delta_r| = 0.478 mm <= 0.50 mm.
 - Diagnostic SNR floor verified: min relSNR = 1.131 >= 0.60.
 
@@ -35,4 +35,4 @@
 ## Cryptographic Provenance
 
 - **Chain Valid:** `True` (2 records)
-- **Terminal Record SHA-256:** `e8537bca0285052a7b785074e0379b4b50224f6ce32bc2b0033e087e7500d632`
+- **Terminal Record SHA-256:** `9fc072edf46c844d32c11c70b0f23ee24763272ea240b09f0424dc6d733ea56d`

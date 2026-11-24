@@ -404,7 +404,7 @@ class ConstraintCheckResult(BaseModel):
 
 
 class SequencePhysicsEstimate(BaseModel):
-    """Computed RF, SAR, gradient, and SNR physics for a single MRI sequence."""
+    """Computed RF, SAR, gradient, PNS, and SNR physics for a single MRI sequence."""
 
     model_config = ConfigDict(extra="forbid")
 
@@ -414,8 +414,92 @@ class SequencePhysicsEstimate(BaseModel):
     head_sar_W_per_kg: float = Field(..., ge=0.0)
     slew_rate_T_per_m_s: float = Field(..., ge=0.0)
     estimated_db_dt_T_per_s: float = Field(..., ge=0.0)
+    pns_stimulation_pct: float = Field(
+        default=0.0,
+        ge=0.0,
+        description="IEC 60601-2-33 chronaxie/rheobase PNS stimulation percentage (80%=normal, 100%=first-level)",
+    )
     relative_snr: float = Field(..., gt=0.0)
     scan_duration_min: float = Field(..., gt=0.0)
+
+
+class ConflictCore(BaseModel):
+    """Minimal conflict explanation when simultaneous multi-implant CSP is violated or infeasible."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    conflict_type: str
+    involved_devices: list[str]
+    constraint_name: str
+    explanation: str
+
+
+class MultiImplantCSPVerdict(BaseModel):
+    """Simultaneous formal IEC 60601-2-33 / ASTM F2503 CSP verdict across multiple co-existing implants."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    scanner_name: str
+    implant_ids: list[str]
+    verdict: Literal["PASS", "VIOLATION", "ABSTAIN"]
+    abstention_code: AbstentionCode | None = None
+    effective_b0_intersection_T: list[float] = Field(default_factory=list)
+    effective_max_b1_rms_uT: float | None = None
+    effective_max_wb_sar_W_per_kg: float | None = None
+    effective_max_slew_rate_T_per_m_s: float | None = None
+    effective_max_active_time_min: float | None = None
+    governing_device_by_limit: dict[str, str] = Field(default_factory=dict)
+    per_implant_verdicts: list[SafetyCSPVerdict] = Field(default_factory=list)
+    conflict_cores: list[ConflictCore] = Field(default_factory=list)
+    summary: str
+
+
+class MultiBeamEREReport(BaseModel):
+    """Multi-beam IMRT/VMAT Lorentz-force ERE cancellation & gantry-avoidance analysis."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    b0_T: float = Field(..., ge=0.0)
+    beam_energy_mv: float = Field(default=6.0, gt=0.0)
+    gantry_angles_deg: list[float]
+    beam_weights: list[float]
+    single_beam_peak_pct: float = Field(..., ge=0.0)
+    multibeam_net_peak_pct: float = Field(..., ge=0.0)
+    multibeam_p95_pct: float = Field(..., ge=0.0)
+    cancellation_reduction_pct: float = Field(
+        ...,
+        description="Relative reduction in peak ERE spike via opposing/multi-beam cancellation [%]",
+    )
+    recommended_low_ere_angles_deg: list[float] = Field(default_factory=list)
+    highest_risk_angles_deg: list[float] = Field(default_factory=list)
+    angle_peak_ere_map: dict[str, float] = Field(default_factory=dict)
+
+
+class PhaseUnwrapReport(BaseModel):
+    """3D DCT Poisson/Laplacian dual-echo B0 phase unwrapping & Jacobian singularity summary."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    volume_shape: tuple[int, int, int]
+    delta_te_ms: float = Field(..., gt=0.0)
+    max_abs_unwrapped_rad: float = Field(..., ge=0.0)
+    cycle_count_range: int = Field(..., ge=0)
+    delta_b0_min_ppm: float
+    delta_b0_max_ppm: float
+    wrap_consistency_rms_rad: float = Field(..., ge=0.0)
+
+
+class JacobianUnwarpReport(BaseModel):
+    """Distortion Jacobian determinant & folding/pile-up singularity report."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    min_jacobian: float
+    max_jacobian: float
+    folding_voxel_count: int = Field(..., ge=0)
+    pileup_voxel_count: int = Field(..., ge=0)
+    has_folding_singularity: bool
+    signal_conservation_ratio: float = Field(..., gt=0.0)
 
 
 class SafetyCSPVerdict(BaseModel):

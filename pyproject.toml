@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "mrphys-guard"
-version = "0.1.0"
+version = "0.2.0"
 description = "3D MRI Geometric Distortion, Synthetic-CT Physics Audit, Electron-Return-Effect (ERE) & Formal IEC 60601-2-33 RF/Implant Safety Constraint Engine with Agent Harness & MCP Server"
 readme = "README.md"
 license = { text = "Apache-2.0" }

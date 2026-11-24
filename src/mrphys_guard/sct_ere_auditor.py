@@ -15,7 +15,7 @@ from __future__ import annotations
 import numpy as np
 from scipy.ndimage import binary_dilation, binary_erosion, distance_transform_edt
 
-from mrphys_guard.ir import EREBoundaryRisk, SCTAnomalyFlag, SCTAuditReport
+from mrphys_guard.ir import EREBoundaryRisk, MultiBeamEREReport, SCTAnomalyFlag, SCTAuditReport
 
 # Physical constants (CODATA 2018/2022)
 ELECTRON_REST_ENERGY_MEV: float = 0.51099895000
@@ -476,3 +476,136 @@ def compute_ere_boundary_risk(
         "cavity_clearance_mm": cavity_clearance_mm,
     }
     return risk, maps
+
+
+def compute_multibeam_ere_cancellation(
+    ct_or_sct_hu: np.ndarray,
+    voxel_size_mm: tuple[float, float, float],
+    gantry_angles_deg: list[float],
+    beam_weights: list[float] | None = None,
+    b0_T: float = 1.5,
+    beam_energy_mv: float = 6.0,
+    mean_secondary_electron_mev: float = 1.5,
+    body_mask: np.ndarray | None = None,
+    sweep_step_deg: float = 30.0,
+) -> tuple[MultiBeamEREReport, dict[str, np.ndarray]]:
+    """Evaluate multi-beam IMRT/VMAT opposing-beam ERE cancellation and rank low-ERE gantry angles.
+
+    Physics (Raaijmakers et al. 2005/2008):
+    - Each transverse gantry beam at angle theta travels along u = (sin(theta), cos(theta), 0)
+      perpendicular to B0 = (0, 0, 1).
+    - Tissue-to-air exit interfaces (u . (-grad rho_e) > 0) experience positive ERE dose spikes,
+      while opposing air-to-tissue entry walls (u . (+grad rho_e) > 0) experience mild lateral
+      buildup depletion (~-22% of exit peak), partially canceling hotspots when opposing beams
+      deliver dose across the same cavity.
+    """
+    if not gantry_angles_deg:
+        raise ValueError("At least one gantry angle is required.")
+    if beam_weights is None:
+        weights = [1.0 / len(gantry_angles_deg)] * len(gantry_angles_deg)
+    else:
+        if len(beam_weights) != len(gantry_angles_deg):
+            raise ValueError("beam_weights length must match gantry_angles_deg.")
+        total_w = float(sum(beam_weights))
+        if total_w <= 0.0:
+            raise ValueError("beam_weights must sum to a positive number.")
+        weights = [float(w) / total_w for w in beam_weights]
+
+    hu = np.asarray(ct_or_sct_hu, dtype=np.float64)
+    red = hu_to_relative_electron_density(hu)
+    air_mask = hu < -450.0
+    tissue_mask = hu >= -200.0
+    eval_body = body_mask.astype(bool) if body_mask is not None else (~air_mask)
+    interface_mask = tissue_mask & binary_dilation(air_mask, iterations=1)
+
+    gx, gy, gz = np.gradient(red, voxel_size_mm[0], voxel_size_mm[1], voxel_size_mm[2])
+    grad_mag = np.sqrt(gx * gx + gy * gy + gz * gz)
+    delta_rho = np.clip(red - 0.0012, 0.0, 1.2)
+
+    r_g_mm = electron_gyroradius_mm(mean_secondary_electron_mev, b0_T, 90.0)
+    air_edt_mm = distance_transform_edt(air_mask, sampling=voxel_size_mm)
+    local_air_depth = np.zeros_like(hu)
+    for shift_ax in range(3):
+        for sgn in (-1, 1):
+            local_air_depth = np.maximum(local_air_depth, np.roll(air_edt_mm, shift=sgn, axis=shift_ax))
+    cavity_clearance = np.clip(local_air_depth * 4.0, 0.0, 60.0)
+
+    if r_g_mm is not None and b0_T > 0.0:
+        eta_return = 1.0 - np.exp(-cavity_clearance / (2.0 * r_g_mm))
+        field_focus = b0_T / (b0_T + 0.45)
+        peak_scale = 52.0 * ((beam_energy_mv / 6.0) ** 0.25)
+        base_amp = peak_scale * field_focus * delta_rho * eta_return
+    else:
+        base_amp = np.zeros_like(hu)
+
+    def _signed_beam_ere_map(angle_deg: float) -> np.ndarray:
+        rad = np.deg2rad(angle_deg)
+        ux, uy = float(np.sin(rad)), float(np.cos(rad))
+        # Outward exit alignment: u . (-grad(red)) / |grad|
+        exit_proj = -(gx * ux + gy * uy)
+        cos_n = np.divide(exit_proj, grad_mag, out=np.zeros_like(grad_mag), where=grad_mag > 1e-6)
+        pos_exit = np.clip(cos_n, 0.0, 1.0)
+        neg_entry = np.clip(-cos_n, 0.0, 1.0)
+        signed = np.zeros_like(hu)
+        # Positive exit hotspot + mild opposing entry buildup shift (Raaijmakers 2005/2008)
+        raw = base_amp * (pos_exit - 0.22 * neg_entry)
+        signed[interface_mask] = np.clip(raw[interface_mask], -15.0, 65.0)
+        return signed
+
+    # Compute plan-weighted net ERE map & worst single-beam peak among chosen angles
+    net_signed = np.zeros_like(hu, dtype=np.float64)
+    single_peaks: list[float] = []
+    for ang, w in zip(gantry_angles_deg, weights, strict=True):
+        bmap = _signed_beam_ere_map(ang)
+        single_peaks.append(float(np.max(np.clip(bmap, 0.0, None))))
+        net_signed += w * bmap
+
+    net_pos = np.clip(net_signed, 0.0, None)
+    single_peak = max(single_peaks) if single_peaks else 0.0
+    net_peak = float(np.max(net_pos)) if np.any(interface_mask) else 0.0
+    net_p95 = float(np.percentile(net_pos[interface_mask], 95)) if np.any(interface_mask) else 0.0
+    reduction = ((single_peak - net_peak) / single_peak * 100.0) if single_peak > 1e-9 else 0.0
+
+    # Sweep candidate gantry angles to rank lowest-ERE vs highest-ERE single-beam directions
+    # Focus ranking on internal cavity interfaces if present (rectum/sinus/trachea), else all interfaces
+    internal_air = air_mask & binary_dilation(eval_body, iterations=1) & (
+        binary_erosion(binary_dilation(eval_body, iterations=4), iterations=4)
+    )
+    internal_iface = interface_mask & binary_dilation(internal_air, iterations=1)
+    rank_mask = internal_iface if np.any(internal_iface) else interface_mask
+
+    sweep_angles = list(np.arange(0.0, 360.0, sweep_step_deg))
+    angle_peaks: dict[str, float] = {}
+    scored: list[tuple[float, float]] = []
+    for ang in sweep_angles:
+        bmap = _signed_beam_ere_map(float(ang))
+        # Use 98th percentile + mean on cavity wall so subtle anatomical asymmetry differentiates angles
+        vals = np.clip(bmap[rank_mask], 0.0, None) if np.any(rank_mask) else np.array([0.0])
+        p_val = float(np.max(vals))
+        score = float(0.6 * p_val + 0.4 * float(np.mean(vals)))
+        angle_peaks[f"{int(round(ang))}"] = round(p_val, 3)
+        scored.append((score, float(ang)))
+
+    scored.sort(key=lambda t: t[0])
+    low_angles = [round(a, 1) for _, a in scored[:3]]
+    high_angles = [round(a, 1) for _, a in scored[-3:][::-1]]
+
+    report = MultiBeamEREReport(
+        b0_T=b0_T,
+        beam_energy_mv=beam_energy_mv,
+        gantry_angles_deg=[float(a) for a in gantry_angles_deg],
+        beam_weights=[round(w, 5) for w in weights],
+        single_beam_peak_pct=round(single_peak, 3),
+        multibeam_net_peak_pct=round(net_peak, 3),
+        multibeam_p95_pct=round(net_p95, 3),
+        cancellation_reduction_pct=round(reduction, 2),
+        recommended_low_ere_angles_deg=low_angles,
+        highest_risk_angles_deg=high_angles,
+        angle_peak_ere_map=angle_peaks,
+    )
+    maps = {
+        "multibeam_net_ere_pct": net_pos,
+        "multibeam_signed_ere_pct": net_signed,
+        "interface_mask": interface_mask,
+    }
+    return report, maps

@@ -709,6 +709,126 @@ class MRSequenceCoDesignAgent:
 # ---------------------------------------------------------------------------
 
 
+class ParetoProtocolCandidate(BaseModel):
+    """One verified operating point on the Distortion–CNR–SAR clinical Pareto frontier."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    profile_name: Literal["LOWEST_DISTORTION", "BALANCED_CLINICAL_CNR", "LOWEST_RF_SAR"]
+    max_target_distortion_mm: float
+    min_relative_snr: float
+    mean_bloch_cnr: float
+    max_b1_rms_uT: float
+    max_wb_sar_W_per_kg: float
+    critic_status: Literal["APPROVED", "REJECTED", "ABSTAINED"]
+    sequences: list[MRSequenceSpec]
+
+
+def compute_bloch_tissue_cnr(
+    seq: MRSequenceSpec,
+    t1_tissue_a_ms: float | None = None,
+    t2_tissue_a_ms: float | None = None,
+    t1_tissue_b_ms: float | None = None,
+    t2_tissue_b_ms: float | None = None,
+) -> float:
+    """Compute steady-state Bloch-equation tissue Contrast-to-Noise Ratio (CNR) proxy.
+
+    Default relaxation times at 1.5T (literature values):
+    - Pelvis/prostate: peripheral zone (T1=1317 ms, T2=110 ms) vs. tumor (T1=1050 ms, T2=68 ms)
+    - Brain/head: gray matter (T1=1120 ms, T2=95 ms) vs. white matter (T1=660 ms, T2=72 ms)
+    - Cardiac: myocardium (T1=1030 ms, T2=50 ms) vs. LV blood (T1=1480 ms, T2=250 ms)
+
+    Combines exact spoiled-GRE / spin-echo Bloch steady-state signal contrast |S_A - S_B|
+    with exact bandwidth/voxel relative SNR scaling (proportional to 1/sqrt(BW * R_PAT)).
+    """
+    defaults = {
+        "pelvis": (1317.0, 110.0, 1050.0, 68.0),
+        "head": (1120.0, 95.0, 660.0, 72.0),
+        "cardiac": (1480.0, 250.0, 1030.0, 50.0),
+    }
+    da_t1, da_t2, db_t1, db_t2 = defaults.get(seq.anatomy, defaults["pelvis"])
+    t1a = t1_tissue_a_ms if t1_tissue_a_ms is not None else da_t1
+    t2a = t2_tissue_a_ms if t2_tissue_a_ms is not None else da_t2
+    t1b = t1_tissue_b_ms if t1_tissue_b_ms is not None else db_t1
+    t2b = t2_tissue_b_ms if t2_tissue_b_ms is not None else db_t2
+
+    alpha = float(np.deg2rad(seq.flip_angle_deg))
+    tr = seq.tr_ms
+    te = seq.te_ms
+
+    def _signal(t1: float, t2: float) -> float:
+        e1 = float(np.exp(-tr / t1))
+        e2 = float(np.exp(-te / t2))
+        if seq.sequence_type in {"TSE", "FSE", "SE"}:
+            return float(np.sin(alpha) * (1.0 - e1) * e2)
+        if seq.sequence_type == "bSSFP":
+            # Freeman-Hill steady-state bSSFP signal
+            denom = 1.0 - (e1 - e2) * float(np.cos(alpha)) - e1 * e2
+            return float(np.sin(alpha) * (1.0 - e1) * np.sqrt(e2) / max(denom, 1e-6))
+        # Spoiled GRE / MPRAGE / Dixon steady-state Ernst equation
+        denom = 1.0 - e1 * float(np.cos(alpha))
+        return float(np.sin(alpha) * (1.0 - e1) / max(denom, 1e-6) * e2)
+
+    contrast = abs(_signal(t1a, t2a) - _signal(t1b, t2b))
+    snr = relative_snr_from_bandwidth(
+        seq.bandwidth_hz_per_px,
+        voxel_size_mm=seq.voxel_size_mm,
+        parallel_accel_factor=seq.parallel_accel_factor,
+    )
+    return float(contrast * snr * 100.0)
+
+
+def generate_pareto_protocol_candidates(
+    scenario: CoDesignScenario,
+) -> list[ParetoProtocolCandidate]:
+    """Generate a 3-point verified Pareto frontier (Lowest Distortion, Balanced CNR, Lowest RF/SAR).
+
+    Every candidate is independently verified by the Critic-Verifier Gate.
+    """
+    agent = MRSequenceCoDesignAgent()
+    base_res = agent.run(scenario)
+    if base_res.status != "CONVERGED" or not base_res.optimized_sequences:
+        return []
+
+    specs: list[tuple[Literal["LOWEST_DISTORTION", "BALANCED_CLINICAL_CNR", "LOWEST_RF_SAR"], float, float]] = [
+        ("LOWEST_DISTORTION", 1.25, 1.00),
+        ("BALANCED_CLINICAL_CNR", 1.00, 1.00),
+        ("LOWEST_RF_SAR", 1.00, 1.45),
+    ]
+    candidates: list[ParetoProtocolCandidate] = []
+    for label, bw_mult, tr_mult in specs:
+        tweaked: list[MRSequenceSpec] = []
+        for s in base_res.optimized_sequences:
+            new_bw = min(2000.0, round(s.bandwidth_hz_per_px * bw_mult, 1))
+            new_tr = min(15000.0, round(s.tr_ms * tr_mult, 1))
+            new_tau = min(6.0, round(s.rf_pulse_duration_ms * (1.20 if label == "LOWEST_RF_SAR" else 1.0), 2))
+            tweaked.append(
+                s.model_copy(
+                    update={
+                        "bandwidth_hz_per_px": new_bw,
+                        "tr_ms": new_tr,
+                        "rf_pulse_duration_ms": new_tau,
+                    }
+                )
+            )
+        critic = independent_critic_verify(scenario, tweaked)
+        csp = verify_implant_safety_csp(scenario.scanner, tweaked, scenario.implant)
+        mean_cnr = float(np.mean([compute_bloch_tissue_cnr(s) for s in tweaked]))
+        candidates.append(
+            ParetoProtocolCandidate(
+                profile_name=label,
+                max_target_distortion_mm=critic.max_target_distortion_mm,
+                min_relative_snr=critic.min_relative_snr,
+                mean_bloch_cnr=round(mean_cnr, 3),
+                max_b1_rms_uT=round(csp.max_b1_rms_uT, 4),
+                max_wb_sar_W_per_kg=round(csp.max_wb_sar_W_per_kg, 4),
+                critic_status=critic.status,
+                sequences=tweaked,
+            )
+        )
+    return candidates
+
+
 def build_prostate_srs_hip_gas_scenario() -> CoDesignScenario:
     """1.5T MR-only prostate SRS with bilateral Ti hip prostheses and rectal gas pocket."""
     scanner = ScannerFieldSpec(

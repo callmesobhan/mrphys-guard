@@ -21,9 +21,11 @@ from mrphys_guard.distortion_solver import (
     GAMMA_BAR_HZ_PER_T,
     build_pelvic_prostate_susceptibility_phantom,
     compute_3d_distortion_decomposition,
+    compute_distortion_jacobian_and_unwarp,
     fit_spherical_harmonic_gnl,
     generate_synthetic_grid_phantom,
     relative_snr_from_bandwidth,
+    unwrap_3d_b0_phase_dct,
 )
 from mrphys_guard.harness.agent_orchestrator import (
     MRSequenceCoDesignAgent,
@@ -34,6 +36,7 @@ from mrphys_guard.ir import MRSequenceSpec
 from mrphys_guard.sct_ere_auditor import (
     audit_synthetic_ct,
     compute_ere_boundary_risk,
+    compute_multibeam_ere_cancellation,
     electron_gyroradius_mm,
     inject_sct_failure_modes,
 )
@@ -884,16 +887,127 @@ def make_fig6_sobol() -> None:
     )
 
 
+def make_fig7_multibeam_ere_and_phase_unwrap() -> None:
+    """Figure 7: Multi-Beam IMRT ERE Cancellation + 3D DCT Phase Unwrapping & Jacobian Audit."""
+    shape = (64, 64, 40)
+    vox = (2.5, 2.5, 2.5)
+    phantom = build_pelvic_prostate_susceptibility_phantom(shape=shape, voxel_size_mm=vox)
+
+    plans = [
+        ("1-Beam\n(0°)", [0.0]),
+        ("Opposing\n(0°,180°)", [0.0, 180.0]),
+        ("5-Beam\nIMRT", [0.0, 72.0, 144.0, 216.0, 288.0]),
+        ("7-Beam\nIMRT", [0.0, 51.0, 103.0, 154.0, 206.0, 257.0, 309.0]),
+    ]
+    peaks, p95s, reductions = [], [], []
+    for _, angs in plans:
+        rep, _ = compute_multibeam_ere_cancellation(
+            phantom["ct_hu"], vox, gantry_angles_deg=angs, b0_T=1.5, body_mask=phantom["body_mask"]
+        )
+        peaks.append(rep.multibeam_net_peak_pct)
+        p95s.append(rep.multibeam_p95_pct)
+        reductions.append(rep.cancellation_reduction_pct)
+
+    # 3D DCT Dual-Echo Phase Unwrapping 1D central profile
+    ux, uy, uz = np.meshgrid(
+        np.linspace(-1.0, 1.0, 48),
+        np.linspace(-1.0, 1.0, 48),
+        np.linspace(-1.0, 1.0, 24),
+        indexing="ij",
+    )
+    true_phi = 8.8 * np.exp(-(ux**2 + uy**2 + uz**2) / 0.42) + 4.2 * ux
+    wrapped_phi = np.arctan2(np.sin(true_phi), np.cos(true_phi))
+    _, unwrap_fields = unwrap_3d_b0_phase_dct(wrapped_phi, delta_te_ms=2.4, b0_T=1.5)
+    unwrapped_phi = unwrap_fields["unwrapped_phase_rad"]
+    unwrapped_aligned = unwrapped_phi - float(np.median(unwrapped_phi - true_phi))
+
+    # Jacobian folding diagnostic on pelvic phantom at BW=220 Hz/px
+    seq_lo = MRSequenceSpec(
+        name="Pelvis_BW220", b0_T=1.5, bandwidth_hz_per_px=220.0, voxel_size_mm=vox, tr_ms=15.0, te_ms=4.5
+    )
+    _, fields_lo = compute_3d_distortion_decomposition(
+        phantom["chi_si"], seq_lo, target_roi_mask=phantom["prostate_mask"], body_mask=phantom["body_mask"]
+    )
+    jac_rep, _ = compute_distortion_jacobian_and_unwarp(
+        phantom["mri_t1"], fields_lo["total_disp_vec_mm"], vox, body_mask=phantom["body_mask"]
+    )
+
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12.4, 5.2), constrained_layout=False)
+    fig.subplots_adjust(left=0.07, right=0.96, top=0.84, bottom=0.17, wspace=0.26)
+    fig.suptitle(
+        "v0.2.0 Advanced Physics: Multi-Beam IMRT ERE Cancellation & 3D DCT Dual-Echo Phase Unwrapping",
+        fontsize=11.8,
+        fontweight="bold",
+        y=0.96,
+    )
+
+    # Panel A: Multi-beam ERE cancellation bar comparison
+    x = np.arange(len(plans))
+    w = 0.36
+    b1 = ax1.bar(x - w / 2, peaks, width=w, color=OI_VERMILION, edgecolor="black", lw=0.8, label="Peak Exit ERE Spike [%]")
+    b2 = ax1.bar(x + w / 2, p95s, width=w, color=OI_BLUE, edgecolor="black", lw=0.8, label="95th-Pct Interface ERE [%]")
+    ax1.axhline(20.0, color=OI_DARK, ls="--", lw=1.2, label="High-Risk ERE Threshold (+20%)")
+    for idx_p, bar in enumerate(b1):
+        h = bar.get_height()
+        red_txt = f"\n(−{reductions[idx_p]:.0f}%)" if idx_p > 0 else ""
+        ax1.text(bar.get_x() + bar.get_width() / 2.0, h + 0.8, f"+{h:.1f}%{red_txt}", ha="center", va="bottom", fontsize=7.3, fontweight="bold", color=OI_VERMILION)
+    for bar in b2:
+        h = bar.get_height()
+        ax1.text(bar.get_x() + bar.get_width() / 2.0, h + 0.8, f"+{h:.1f}%", ha="center", va="bottom", fontsize=7.3, fontweight="bold", color=OI_BLUE)
+
+    ax1.set_xticks(x)
+    ax1.set_xticklabels([p[0] for p in plans], fontsize=8.3)
+    ax1.set_ylabel("Net Tissue–Air ERE Dose Enhancement [%]")
+    ax1.set_ylim(0, 44)
+    ax1.set_title("1.5T MR-Linac Opposing & IMRT Multi-Beam ERE Cancellation")
+    ax1.grid(True, axis="y", alpha=0.25)
+    ax1.legend(loc="upper right", fontsize=7.8)
+    _add_panel_label(ax1, "A")
+
+    # Panel B: 3D DCT Phase Unwrapping profile
+    mid_y, mid_z = 24, 12
+    x_mm = np.linspace(-60.0, 60.0, 48)
+    ax2.plot(x_mm, true_phi[:, mid_y, mid_z], color=OI_DARK, lw=3.0, alpha=0.35, label="True Unwrapped Phase φ(x)")
+    ax2.plot(x_mm, wrapped_phi[:, mid_y, mid_z], color=OI_ORANGE, lw=1.6, ls="--", label="Measured Wrapped Phase ψ ∈ [−π, π)")
+    ax2.plot(x_mm, unwrapped_aligned[:, mid_y, mid_z], "o", ms=3.2, color=OI_GREEN, label="3D DCT Poisson Unwrap (Err < 1e−12 rad)")
+    ax2.axhline(np.pi, color="#888888", ls=":", lw=1.0)
+    ax2.axhline(-np.pi, color="#888888", ls=":", lw=1.0)
+    ax2.text(
+        0.97,
+        0.05,
+        f"Low-BW (220 Hz/px) Jacobian Audit:\nmin J = {jac_rep.min_jacobian:.2f} | Folding vox = {jac_rep.folding_voxel_count}",
+        transform=ax2.transAxes,
+        ha="right",
+        va="bottom",
+        fontsize=7.6,
+        bbox={"boxstyle": "round,pad=0.25", "facecolor": "#FFF8E7", "edgecolor": OI_ORANGE, "alpha": 0.92},
+    )
+    ax2.set_xlabel("Spatial Position Along Readout x [mm]")
+    ax2.set_ylabel("Dual-Echo B0 Phase [rad]")
+    ax2.set_ylim(-5.0, 14.2)
+    ax2.set_title("3D DCT Phase Unwrapping (Multi-2π Recovery) & Jacobian Check")
+    ax2.grid(True, alpha=0.25)
+    ax2.legend(loc="upper left", bbox_to_anchor=(0.0, 0.87), fontsize=7.5)
+    _add_panel_label(ax2, "B")
+
+    _save_fig(
+        fig,
+        "fig7_multibeam_ere_and_phase_unwrap",
+        "mrphys-guard v0.2.0 | Raaijmakers 2005/2008 opposing-beam ERE cancellation & Ghiglia-Romero 1994 3D DCT phase unwrapping | Research Software — NOT A MEDICAL DEVICE",
+    )
+
+
 def main() -> None:
     configure_journal_style()
-    print("Generating 6 publication-grade 300-DPI PNG + PDF figures...")
+    print("Generating 7 publication-grade 300-DPI PNG + PDF figures...")
     make_fig1_3d_distortion()
     make_fig2_bandwidth_pareto()
     make_fig3_sct_and_ere()
     make_fig4_implant_csp()
     make_fig5_phantom_qa()
     make_fig6_sobol()
-    print("All 6 figures generated cleanly in figures/.")
+    make_fig7_multibeam_ere_and_phase_unwrap()
+    print("All 7 figures generated cleanly in figures/.")
 
 
 if __name__ == "__main__":

@@ -134,7 +134,7 @@ def test_mcp_jsonrpc_lifecycle_and_all_six_tools() -> None:
     list_resp = handle_jsonrpc_request({"jsonrpc": "2.0", "id": 3, "method": "tools/list"})
     assert list_resp is not None
     tools = list_resp["result"]["tools"]
-    assert len(tools) == len(MCP_TOOLS) == 6
+    assert len(tools) == len(MCP_TOOLS) == 8
     tool_names = {t["name"] for t in tools}
     assert tool_names == {
         "mrphys_solve_3d_distortion",
@@ -143,6 +143,8 @@ def test_mcp_jsonrpc_lifecycle_and_all_six_tools() -> None:
         "mrphys_codesign_safe_sequence",
         "mrphys_lookup_implant_profile",
         "mrphys_run_sobol_sensitivity",
+        "mrphys_multibeam_ere_optimize",
+        "mrphys_verify_multi_implant_csp",
     }
 
     # 1. Lookup implant profile
@@ -219,6 +221,34 @@ def test_mcp_jsonrpc_lifecycle_and_all_six_tools() -> None:
         }
     )
     assert r6 is not None and "geometric_error" in r6["result"]["structuredContent"]["result"]
+
+    # 7. Multi-beam ERE optimization
+    r7 = handle_jsonrpc_request(
+        {
+            "jsonrpc": "2.0",
+            "id": 16,
+            "method": "tools/call",
+            "params": {"name": "mrphys_multibeam_ere_optimize", "arguments": {"grid_size": 24, "b0_T": 1.5}},
+        }
+    )
+    assert r7 is not None and r7["result"]["structuredContent"]["result"]["cancellation_reduction_pct"] > 35.0
+
+    # 8. Simultaneous multi-implant CSP
+    r8 = handle_jsonrpc_request(
+        {
+            "jsonrpc": "2.0",
+            "id": 17,
+            "method": "tools/call",
+            "params": {
+                "name": "mrphys_verify_multi_implant_csp",
+                "arguments": {
+                    "implant_ids": ["generic_cardiac_pacemaker_1p5t", "generic_hip_prosthesis_ti"],
+                    "sequences": [{"name": "GRE", "bandwidth_hz_per_px": 450.0, "flip_angle_deg": 20.0, "tr_ms": 14.0, "te_ms": 4.0}],
+                },
+            },
+        }
+    )
+    assert r8 is not None and r8["result"]["structuredContent"]["result"]["verdict"] == "PASS"
 
     # Unknown method returns standard JSON-RPC -32601 error
     err_resp = handle_jsonrpc_request({"jsonrpc": "2.0", "id": 99, "method": "unknown/method"})

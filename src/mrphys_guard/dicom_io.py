@@ -17,53 +17,66 @@ from pydicom.uid import (
     MRImageStorage,
     generate_uid,
 )
+from scipy.ndimage import affine_transform
 
 from mrphys_guard.ir import MRSequenceSpec
 
 
 @dataclass(frozen=True)
 class LoadedMedicalVolume:
-    """Standardized 3D medical volume with voxel spacing and extracted DICOM/header metadata."""
+    """Standardized 3D medical volume with voxel spacing, 4x4 physical affine, and header metadata."""
 
     array: np.ndarray
     voxel_size_mm: tuple[float, float, float]
     modality: str
     source_path: str
     metadata: dict[str, Any]
+    affine_4x4: np.ndarray | None = None
 
 
 def load_nifti_volume(path: str | Path, modality: str = "MR") -> LoadedMedicalVolume:
-    """Load a 3D NIfTI (.nii / .nii.gz) volume with voxel spacing."""
+    """Load a 3D NIfTI (.nii / .nii.gz) volume with voxel spacing and 4x4 RAS world affine."""
     p = Path(path)
     img = nib.load(str(p))
     arr = np.asarray(img.get_fdata(), dtype=np.float64)
     if arr.ndim != 3:
         raise ValueError(f"Expected 3D NIfTI volume at {p}; got shape {arr.shape}.")
     zooms = tuple(float(z) for z in img.header.get_zooms()[:3])
+    affine = np.asarray(img.affine, dtype=np.float64)
     return LoadedMedicalVolume(
         array=arr,
         voxel_size_mm=(zooms[0], zooms[1], zooms[2]),
         modality=modality,
         source_path=str(p),
         metadata={"format": "NIfTI", "shape": list(arr.shape)},
+        affine_4x4=affine,
     )
 
 
 def load_nrrd_volume(path: str | Path, modality: str = "MR") -> LoadedMedicalVolume:
-    """Load a 3D NRRD (.nrrd) volume (such as 3D Slicer CT-MR Brain) with exact voxel spacing."""
+    """Load a 3D NRRD (.nrrd) volume (such as 3D Slicer CT-MR Brain) with exact voxel spacing & 4x4 affine."""
     p = Path(path)
     data, header = nrrd.read(str(p))
     arr = np.asarray(data, dtype=np.float64)
     if arr.ndim != 3:
         raise ValueError(f"Expected 3D NRRD volume at {p}; got shape {arr.shape}.")
+
+    affine = np.eye(4, dtype=np.float64)
     if "space directions" in header:
         dirs = np.asarray(header["space directions"], dtype=np.float64)
         spacings = tuple(float(np.linalg.norm(dirs[i])) for i in range(3))
+        # In NRRD, row i of space directions is the physical step vector for index axis i -> column i of affine
+        affine[:3, :3] = dirs.T
     elif "spacings" in header:
         sp = header["spacings"]
         spacings = (float(sp[0]), float(sp[1]), float(sp[2]))
+        affine[:3, :3] = np.diag(spacings)
     else:
         spacings = (1.0, 1.0, 1.0)
+
+    if "space origin" in header:
+        affine[:3, 3] = np.asarray(header["space origin"], dtype=np.float64)
+
     return LoadedMedicalVolume(
         array=arr,
         voxel_size_mm=spacings,
@@ -74,6 +87,45 @@ def load_nrrd_volume(path: str | Path, modality: str = "MR") -> LoadedMedicalVol
             "shape": list(arr.shape),
             "space": str(header.get("space", "unknown")),
         },
+        affine_4x4=affine,
+    )
+
+
+def resample_volume_to_reference(
+    moving: LoadedMedicalVolume,
+    reference: LoadedMedicalVolume,
+    order: int = 1,
+    cval: float = 0.0,
+) -> LoadedMedicalVolume:
+    """Resample a 3D medical volume onto a reference volume's exact physical-space voxel grid.
+
+    Uses the exact 4x4 voxel-to-world affines (M = A_moving^-1 @ A_ref) so multi-modality pairs
+    (e.g. thick-slice clinical MR-brain-T1.nrrd + thin-slice CT-brain.nrrd) are aligned in mm space.
+    """
+    a_mov = moving.affine_4x4 if moving.affine_4x4 is not None else np.diag([*moving.voxel_size_mm, 1.0])
+    a_ref = reference.affine_4x4 if reference.affine_4x4 is not None else np.diag([*reference.voxel_size_mm, 1.0])
+    ref_to_mov = np.linalg.inv(a_mov) @ a_ref
+
+    resampled = affine_transform(
+        moving.array,
+        matrix=ref_to_mov[:3, :3],
+        offset=ref_to_mov[:3, 3],
+        output_shape=reference.array.shape,
+        order=order,
+        mode="constant",
+        cval=cval,
+    )
+    return LoadedMedicalVolume(
+        array=np.asarray(resampled, dtype=np.float64),
+        voxel_size_mm=reference.voxel_size_mm,
+        modality=moving.modality,
+        source_path=f"{moving.source_path} -> resampled({reference.source_path})",
+        metadata={
+            **moving.metadata,
+            "resampled_to_shape": list(reference.array.shape),
+            "interpolation_order": order,
+        },
+        affine_4x4=a_ref.copy(),
     )
 
 

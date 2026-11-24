@@ -4,10 +4,10 @@
 
 [![Python 3.11 | 3.12](https://img.shields.io/badge/python-3.11%20%7C%203.12-0072B2.svg)](pyproject.toml)
 [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-009E73.svg)](LICENSE)
-[![Tests: 26 Passed](https://img.shields.io/badge/pytest-26%20passed%20%7C%200%20warnings-009E73.svg)](tests/)
-[![Coverage: 92.1%](https://img.shields.io/badge/coverage-92.1%25-0072B2.svg)](docs/AUDIT_REPORT.md)
+[![Tests: 33 Passed](https://img.shields.io/badge/pytest-33%20passed%20%7C%200%20warnings-009E73.svg)](tests/)
+[![Coverage: 92.6%](https://img.shields.io/badge/coverage-92.6%25-0072B2.svg)](docs/AUDIT_REPORT.md)
 [![Ruff: 0 Errors](https://img.shields.io/badge/ruff-0%20errors-009E73.svg)](pyproject.toml)
-[![MCP: JSON-RPC 2.0](https://img.shields.io/badge/MCP-6%20provenance--gated%20tools-E69F00.svg)](src/mrphys_guard/harness/mcp_server.py)
+[![MCP: JSON-RPC 2.0](https://img.shields.io/badge/MCP-8%20provenance--gated%20tools-E69F00.svg)](src/mrphys_guard/harness/mcp_server.py)
 [![Research Software](https://img.shields.io/badge/status-Research%20Software%20%E2%80%94%20NOT%20A%20MEDICAL%20DEVICE-D55E00.svg)](LICENSE)
 
 > **RESEARCH SOFTWARE — NOT A MEDICAL DEVICE.**
@@ -61,6 +61,11 @@ All numbers below are reproducible via `uv run python scripts/run_benchmarks.py`
 | **Hard Safety Abstention Gate** | Ferromagnetic Aneurysm Clip (`MR_UNSAFE`) | `ABSTAIN` (`MR_UNSAFE_DEVICE_DETECTED`) | Zero bypass permitted |
 | **Saltelli–Jansen Global Sobol' ($N=1024$)** | Dominant variance drivers (`Geom` / `Dose`) | `BW (0.46) & GNL (0.43)` / `Δχ-ERE (0.45) & sCT (0.43)` | Saltelli et al. (2010), 6,144 evals/output |
 | **Lossless DICOM Round-Trip** | CT HU error / MR pixel error | `0.0 HU` / `5.2e-6` | Real `pydicom` headers preserved |
+| **3D DCT Phase Unwrapping (`v0.2.0`)** | Multi-$2\pi$ cycle recovery error | `8.88e-16 rad` (machine precision) | Ghiglia & Romero (1994) 3D Poisson DCT |
+| **Distortion Jacobian Audit (`v0.2.0`)** | Low-BW folding singularity detection | `min J = -10.12` (`2,520` folding vox) | Intensity-preserving unwarping & pile-up alert |
+| **Multi-Beam 7-Field ERE (`v0.2.0`)** | Single-beam vs. 7-beam IMRT net peak | `+31.5%` $\to$ `+8.2%` (`-73.9%` reduction) | Opposing-beam cancellation & gantry avoidance |
+| **Multi-Implant CSP + IEC PNS (`v0.2.0`)** | Pacemaker + Ti Hip co-existence & PNS | `PASS` (pacemaker governs `2.0 uT`) | UNSAT conflict cores + IEC 80%/100% PNS |
+| **Bloch CNR Pareto Frontier (`v0.2.0`)** | 3 Critic-`APPROVED` clinical protocols | `0.394 mm` / `0.478 mm (CNR 1.89)` / `2.28 uT (CNR 2.67)` | Distortion vs. Bloch CNR vs. RF/SAR trade-off |
 
 ---
 
@@ -85,6 +90,9 @@ All six figures are generated reproducibly by [`scripts/generate_figures.py`](sc
 
 ### 6. Saltelli–Jansen QMC Global Sobol' Sensitivity Analysis ($S_1$ vs. $S_T$)
 ![Figure 6: Saltelli-Jansen QMC Global Sobol Sensitivity](figures/fig6_sobol_mr_uncertainty.png)
+
+### 7. Multi-Beam IMRT ERE Cancellation & 3D DCT Dual-Echo Phase Unwrapping (`v0.2.0`)
+![Figure 7: Multi-Beam ERE Cancellation and 3D DCT Phase Unwrapping](figures/fig7_multibeam_ere_and_phase_unwrap.png)
 
 ---
 
@@ -158,7 +166,7 @@ print(result.status, result.critic.status, result.optimized_max_target_distortio
 </details>
 
 <details>
-<summary><strong>JSON-RPC 2.0 MCP Server Configuration & Tool Catalog (6 Tools)</strong></summary>
+<summary><strong>JSON-RPC 2.0 MCP Server Configuration & Tool Catalog (8 Tools)</strong></summary>
 
 Start the stdio MCP server with:
 ```bash
@@ -180,10 +188,12 @@ Add to your MCP client configuration:
 Exposed provenance-gated tools:
 1. `mrphys_solve_3d_distortion` — 3D GNL ($\ell \le 5$) + k-space Lorentz-sphere susceptibility dipole solver
 2. `mrphys_audit_sct_and_ere` — Synthetic-CT physics-plausibility auditor + 1.5T/0.35T ERE boundary risk kernel
-3. `mrphys_verify_implant_csp` — Formal IEC 60601-2-33 / ASTM F2503 implant safety constraint verifier
+3. `mrphys_verify_implant_csp` — Formal IEC 60601-2-33 / ASTM F2503 implant safety constraint verifier (incl. IEC PNS %)
 4. `mrphys_codesign_safe_sequence` — Closed-loop sequence & safety co-design agent with independent Critic-Verifier gate
 5. `mrphys_lookup_implant_profile` — Built-in generic MR-conditional / MR-unsafe device profile registry
 6. `mrphys_run_sobol_sensitivity` — Exact Saltelli–Jansen QMC global Sobol' sensitivity analysis ($S_1, S_T$)
+7. `mrphys_multibeam_ere_optimize` — Multi-beam IMRT/VMAT opposing-beam ERE cancellation & low-ERE gantry ranking
+8. `mrphys_verify_multi_implant_csp` — Simultaneous multi-implant CSP with governing bottlenecks & UNSAT conflict cores
 </details>
 
 ---

@@ -12,10 +12,12 @@ from pathlib import Path
 import numpy as np
 
 from mrphys_guard.dicom_io import (
+    LoadedMedicalVolume,
     build_ct_dicom_dataset,
     build_mr_dicom_dataset,
     load_nrrd_volume,
     read_dicom_physics,
+    resample_volume_to_reference,
     save_dicom,
 )
 from mrphys_guard.distortion_solver import (
@@ -23,21 +25,29 @@ from mrphys_guard.distortion_solver import (
     CHI_WATER_SI,
     build_pelvic_prostate_susceptibility_phantom,
     compute_3d_distortion_decomposition,
+    compute_distortion_jacobian_and_unwarp,
     fit_spherical_harmonic_gnl,
     generate_synthetic_grid_phantom,
     solve_susceptibility_b0_map,
+    unwrap_3d_b0_phase_dct,
 )
 from mrphys_guard.harness.agent_orchestrator import (
     MRSequenceCoDesignAgent,
     build_pacemaker_cardiac_brain_scenario,
     build_prostate_srs_hip_gas_scenario,
+    generate_pareto_protocol_candidates,
 )
-from mrphys_guard.implant_safety_csp import lookup_implant_profile, verify_implant_safety_csp
+from mrphys_guard.implant_safety_csp import (
+    lookup_implant_profile,
+    verify_implant_safety_csp,
+    verify_multi_implant_safety_csp,
+)
 from mrphys_guard.ir import MRSequenceSpec, ScannerFieldSpec
 from mrphys_guard.provenance import ProvenanceLedger
 from mrphys_guard.sct_ere_auditor import (
     audit_synthetic_ct,
     compute_ere_boundary_risk,
+    compute_multibeam_ere_cancellation,
     inject_sct_failure_modes,
 )
 from mrphys_guard.sobol_sensitivity import run_mr_uncertainty_sobol_suite
@@ -104,13 +114,20 @@ def run_public_ctmr_brain_benchmark() -> dict[str, object]:
         )
         ere_by_b0[f"{b0:.2f}T"] = risk.model_dump(mode="json")
 
-    # Derived perturbation audit on real clinical CT (tagged DERIVED_PERTURBATION)
-    # Build an MRI-like intensity proxy from real CT soft tissue / bone / air contrast on the exact CT grid
-    # (CT-brain and MR-brain-T1 have different native voxel grids; report both native shapes explicitly)
+    # Co-register real clinical MR-brain-T1.nrrd directly onto downsampled CT-brain.nrrd physical grid!
+    assert ct_vol.affine_4x4 is not None
+    ct_ds_vol = LoadedMedicalVolume(
+        array=ct_ds,
+        voxel_size_mm=vox_ds,
+        modality="CT",
+        source_path=ct_vol.source_path,
+        metadata=ct_vol.metadata,
+        affine_4x4=ct_vol.affine_4x4 @ np.diag([2.0, 2.0, 2.0, 1.0]),
+    )
+    mr_on_ct = resample_volume_to_reference(mr_vol, ct_ds_vol, order=1)
+
     ct_body = ct_ds > -450.0
     ct_bone = ct_ds > 350.0
-    mri_proxy = np.where(ct_body, 0.62, 0.01)
-    mri_proxy[ct_bone] = 0.08
     sct_perturbed = inject_sct_failure_modes(
         ct_hu=ct_ds,
         bone_mask=ct_bone,
@@ -122,7 +139,7 @@ def run_public_ctmr_brain_benchmark() -> dict[str, object]:
         hu_noise_sigma=15.0,
     )
     sct_report, _ = audit_synthetic_ct(
-        mri_volume=mri_proxy,
+        mri_volume=mr_on_ct.array,
         sct_hu=sct_perturbed,
         voxel_size_mm=vox_ds,
         ground_truth_ct_hu=ct_ds,
@@ -265,6 +282,47 @@ def main() -> None:
         "ct_modality": ct_hdr["Modality"],
     }
 
+    # v0.2.0 Advanced Physics Benchmarks: Multi-beam ERE, DCT Phase Unwrap, Jacobian, Multi-Implant & Pareto
+    mb_ere_7, _ = compute_multibeam_ere_cancellation(
+        ct_or_sct_hu=phantom["ct_hu"],
+        voxel_size_mm=(2.5, 2.5, 2.5),
+        gantry_angles_deg=[0.0, 51.0, 103.0, 154.0, 206.0, 257.0, 309.0],
+        b0_T=1.5,
+        body_mask=phantom["body_mask"],
+    )
+    # 3D DCT phase unwrap benchmark
+    ux, uy, uz = np.meshgrid(
+        np.linspace(-1, 1, 24), np.linspace(-1, 1, 24), np.linspace(-1, 1, 16), indexing="ij"
+    )
+    true_phi = 8.5 * np.exp(-(ux**2 + uy**2 + uz**2) / 0.45) + 4.5 * ux - 3.0 * uy
+    wrapped_phi = np.arctan2(np.sin(true_phi), np.cos(true_phi))
+    unwrap_rep, unwrap_fields = unwrap_3d_b0_phase_dct(wrapped_phi, delta_te_ms=2.4, b0_T=1.5)
+    unwrap_diff = unwrap_fields["unwrapped_phase_rad"] - true_phi
+    unwrap_max_err = float(np.max(np.abs(unwrap_diff - np.median(unwrap_diff))))
+
+    # Distortion Jacobian singularity check at low BW
+    _, fields_lo = compute_3d_distortion_decomposition(
+        chi_si=phantom["chi_si"],
+        sequence=seq_low_bw,
+        gnl_model=gnl_l5,
+        target_roi_mask=phantom["prostate_mask"],
+        body_mask=phantom["body_mask"],
+    )
+    jac_rep, _ = compute_distortion_jacobian_and_unwarp(
+        phantom["mri_t1"], fields_lo["total_disp_vec_mm"], (2.5, 2.5, 2.5), body_mask=phantom["body_mask"]
+    )
+
+    # Multi-implant simultaneous CSP (pacemaker + Ti hip prosthesis)
+    mi_verdict = verify_multi_implant_safety_csp(
+        ScannerFieldSpec(b0_T=1.5, max_spatial_gradient_T_per_m=17.0),
+        res_pacemaker.optimized_sequences,
+        [
+            lookup_implant_profile("generic_cardiac_pacemaker_1p5t"),
+            lookup_implant_profile("generic_hip_prosthesis_ti"),
+        ],
+    )
+    pareto_cands = generate_pareto_protocol_candidates(build_prostate_srs_hip_gas_scenario())
+
     summary = {
         "research_only_notice": "RESEARCH SOFTWARE — NOT A MEDICAL DEVICE.",
         "analytical_lorentz_sphere": sphere_metrics,
@@ -272,6 +330,28 @@ def main() -> None:
             "lmax_3_rms_mm": round(gnl_l3.fit_residual_rms_mm, 5),
             "lmax_5_rms_mm": round(gnl_l5.fit_residual_rms_mm, 5),
             "lmax_5_max_mm": round(gnl_l5.fit_residual_max_mm, 5),
+        },
+        "v02_advanced_physics": {
+            "multibeam_7field_ere": mb_ere_7.model_dump(mode="json"),
+            "dct_phase_unwrap_max_err_rad": unwrap_max_err,
+            "dct_phase_unwrap_cycles": unwrap_rep.cycle_count_range,
+            "low_bw_jacobian": jac_rep.model_dump(mode="json"),
+            "multi_implant_csp": {
+                "verdict": mi_verdict.verdict,
+                "governing_device_by_limit": mi_verdict.governing_device_by_limit,
+                "effective_max_b1_rms_uT": mi_verdict.effective_max_b1_rms_uT,
+            },
+            "bloch_pareto_frontier": [
+                {
+                    "profile_name": c.profile_name,
+                    "max_target_distortion_mm": c.max_target_distortion_mm,
+                    "min_relative_snr": c.min_relative_snr,
+                    "mean_bloch_cnr": c.mean_bloch_cnr,
+                    "max_b1_rms_uT": c.max_b1_rms_uT,
+                    "critic_status": c.critic_status,
+                }
+                for c in pareto_cands
+            ],
         },
         "pelvis_3d_distortion": {
             "low_bw_185": decomp_low.model_dump(mode="json"),

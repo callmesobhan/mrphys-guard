@@ -11,6 +11,105 @@
     "lmax_5_rms_mm": 0.03409,
     "lmax_5_max_mm": 0.07787
   },
+  "v02_advanced_physics": {
+    "multibeam_7field_ere": {
+      "b0_T": 1.5,
+      "beam_energy_mv": 6.0,
+      "gantry_angles_deg": [
+        0.0,
+        51.0,
+        103.0,
+        154.0,
+        206.0,
+        257.0,
+        309.0
+      ],
+      "beam_weights": [
+        0.14286,
+        0.14286,
+        0.14286,
+        0.14286,
+        0.14286,
+        0.14286,
+        0.14286
+      ],
+      "single_beam_peak_pct": 31.547,
+      "multibeam_net_peak_pct": 8.226,
+      "multibeam_p95_pct": 6.951,
+      "cancellation_reduction_pct": 73.93,
+      "recommended_low_ere_angles_deg": [
+        30.0,
+        330.0,
+        60.0
+      ],
+      "highest_risk_angles_deg": [
+        180.0,
+        210.0,
+        150.0
+      ],
+      "angle_peak_ere_map": {
+        "0": 28.685,
+        "30": 27.708,
+        "60": 27.708,
+        "90": 28.488,
+        "120": 31.772,
+        "150": 31.818,
+        "180": 32.893,
+        "210": 31.818,
+        "240": 31.772,
+        "270": 28.488,
+        "300": 27.708,
+        "330": 27.708
+      }
+    },
+    "dct_phase_unwrap_max_err_rad": 8.881784197001252e-16,
+    "dct_phase_unwrap_cycles": 2,
+    "low_bw_jacobian": {
+      "min_jacobian": -10.12053635507163,
+      "max_jacobian": 12.11324456996998,
+      "folding_voxel_count": 2520,
+      "pileup_voxel_count": 12930,
+      "has_folding_singularity": true,
+      "signal_conservation_ratio": 1.01701
+    },
+    "multi_implant_csp": {
+      "verdict": "PASS",
+      "governing_device_by_limit": {
+        "max_b1_rms_uT": "generic_cardiac_pacemaker_1p5t",
+        "max_wb_sar_W_per_kg": "generic_cardiac_pacemaker_1p5t",
+        "max_slew_rate_T_per_m_s": "generic_cardiac_pacemaker_1p5t",
+        "max_active_scan_time_min": "generic_cardiac_pacemaker_1p5t",
+        "max_spatial_gradient_T_per_m": "generic_cardiac_pacemaker_1p5t"
+      },
+      "effective_max_b1_rms_uT": 2.0
+    },
+    "bloch_pareto_frontier": [
+      {
+        "profile_name": "LOWEST_DISTORTION",
+        "max_target_distortion_mm": 0.3939,
+        "min_relative_snr": 1.0113,
+        "mean_bloch_cnr": 1.688,
+        "max_b1_rms_uT": 3.008,
+        "critic_status": "APPROVED"
+      },
+      {
+        "profile_name": "BALANCED_CLINICAL_CNR",
+        "max_target_distortion_mm": 0.4776,
+        "min_relative_snr": 1.1307,
+        "mean_bloch_cnr": 1.888,
+        "max_b1_rms_uT": 3.008,
+        "critic_status": "APPROVED"
+      },
+      {
+        "profile_name": "LOWEST_RF_SAR",
+        "max_target_distortion_mm": 0.4776,
+        "min_relative_snr": 1.1307,
+        "mean_bloch_cnr": 2.666,
+        "max_b1_rms_uT": 2.279,
+        "critic_status": "APPROVED"
+      }
+    ]
+  },
   "pelvis_3d_distortion": {
     "low_bw_185": {
       "b0_T": 1.5,
@@ -307,7 +406,7 @@
       "estimated_6mv_dose_error_pct": 44.592126169727834,
       "bone_to_air_swap_voxels": 25089,
       "missing_metal_voxels": 27,
-      "contour_truncation_voxels": 46931,
+      "contour_truncation_voxels": 37341,
       "anomalies": [
         {
           "anomaly_type": "BONE_TO_AIR_SWAP",
@@ -330,11 +429,11 @@
         {
           "anomaly_type": "BODY_CONTOUR_TRUNCATION",
           "severity": "HIGH",
-          "voxel_count": 46931,
-          "volume_cc": 175.24002007188332,
-          "mean_hu_discrepancy": -957.421001044086,
-          "estimated_wepl_error_mm": 82.22509568,
-          "description": "Detected 46931 voxels (175.24 cc) of truncated skin/body contour where MRI shows tissue but sCT predicts air."
+          "voxel_count": 37341,
+          "volume_cc": 139.4310283076047,
+          "mean_hu_discrepancy": -1281.0624514608608,
+          "estimated_wepl_error_mm": 75.07508735999998,
+          "description": "Detected 37341 voxels (139.43 cc) of truncated skin/body contour where MRI shows tissue but sCT predicts air."
         }
       ],
       "overall_status": "FAIL"
@@ -529,39 +628,39 @@
     "record_count": 3,
     "records": [
       {
-        "record_id": "mrpg-0001-1b42a23b",
-        "timestamp_utc": "2026-11-24T19:22:49.521128+00:00",
+        "record_id": "mrpg-0001-5a885ebe",
+        "timestamp_utc": "2026-11-24T19:48:33.692639+00:00",
         "engine_version": "0.1.0",
         "operation": "benchmark_lorentz_sphere",
         "data_origin": "SYNTHETIC_PHYSICS_FIXTURE",
         "input_sha256": "5638850a24b3746bd7e0f2e705c1eab8eab7ed11dca8e22b133fb9cd2df3cce4",
         "output_sha256": "eac06b6b6ffa9c97cb1f7c8a78c5f67d22334b98db6eb33699ae9712d0905a7c",
         "previous_record_sha256": null,
-        "record_sha256": "b39225de0072568cf08c45dd6c655d22ae71c4c80360a86bcae08f5d480a83e0",
+        "record_sha256": "8bda25f1eba8a5818025fb55a87054fd204cfda1bfd2729b57e7f0a20e4055a7",
         "metadata": {}
       },
       {
-        "record_id": "mrpg-0002-9b511212",
-        "timestamp_utc": "2026-11-24T19:22:49.953662+00:00",
+        "record_id": "mrpg-0002-fcd11a44",
+        "timestamp_utc": "2026-11-24T19:48:34.160221+00:00",
         "engine_version": "0.1.0",
         "operation": "benchmark_3d_distortion",
         "data_origin": "SYNTHETIC_PHYSICS_FIXTURE",
         "input_sha256": "32af787fcc435a313097bf5a3eed78889568025a208c1d36bc75da0e0a9c7fdb",
         "output_sha256": "bdb10bc233e81a0b9969fbe9a6400ad296e48245b3e66047da454c68e22fbde9",
-        "previous_record_sha256": "b39225de0072568cf08c45dd6c655d22ae71c4c80360a86bcae08f5d480a83e0",
-        "record_sha256": "0b1d0707bd2a0797f9e5d62c029288a97789302ca15e0d04e5c9a87d091d65e1",
+        "previous_record_sha256": "8bda25f1eba8a5818025fb55a87054fd204cfda1bfd2729b57e7f0a20e4055a7",
+        "record_sha256": "b8d2fc5759e73687ec4f1d6cba165dd940f06d9f0525b45403384bae7ec77c9f",
         "metadata": {}
       },
       {
-        "record_id": "mrpg-0003-e5f0d0da",
-        "timestamp_utc": "2026-11-24T19:22:51.624456+00:00",
+        "record_id": "mrpg-0003-68cea3cf",
+        "timestamp_utc": "2026-11-24T19:48:35.888132+00:00",
         "engine_version": "0.1.0",
         "operation": "benchmark_public_ctmr_brain",
         "data_origin": "PUBLIC_OPEN_CLINICAL",
         "input_sha256": "446f815214baa5517ddb495e7b35e4743df44a97367393bf70a08c46719e74db",
-        "output_sha256": "cf6fa65d99c2dddcf4f01e9dce896ac1a24de182e327d0579fbf7203453fdca5",
-        "previous_record_sha256": "0b1d0707bd2a0797f9e5d62c029288a97789302ca15e0d04e5c9a87d091d65e1",
-        "record_sha256": "3c8d6382606f1ab67482262655eb8228f4c681c659bd615e17d0db255386e17e",
+        "output_sha256": "ddde2cf7b9853cf4c50ac1e3a520982ab85a635968662ee76be41124cd637c07",
+        "previous_record_sha256": "b8d2fc5759e73687ec4f1d6cba165dd940f06d9f0525b45403384bae7ec77c9f",
+        "record_sha256": "08b484199360b23f582e01077b7c1c116cda5ff21f881a7b1972361bd4caa28e",
         "metadata": {}
       }
     ]

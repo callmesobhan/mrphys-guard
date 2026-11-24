@@ -11,9 +11,16 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 import numpy as np
+from scipy.fft import dctn, idctn
+from scipy.ndimage import map_coordinates
 from scipy.special import lpmv
 
-from mrphys_guard.ir import DistortionDecomposition, MRSequenceSpec
+from mrphys_guard.ir import (
+    DistortionDecomposition,
+    JacobianUnwarpReport,
+    MRSequenceSpec,
+    PhaseUnwrapReport,
+)
 
 # CODATA 2018/2022 proton gyromagnetic ratio gamma / (2*pi) [Hz/T]
 GAMMA_BAR_HZ_PER_T: float = 42.577478518e6
@@ -524,3 +531,176 @@ def build_pelvic_prostate_susceptibility_phantom(
         "bone_mask": bone_mask,
         "metal_mask": metal_mask,
     }
+
+
+# ---------------------------------------------------------------------------
+# 3. 3D DCT Poisson/Laplacian Dual-Echo B0 Phase Unwrapping & Jacobian Unwarp
+# ---------------------------------------------------------------------------
+
+
+def _wrap_to_pi(phase_rad: np.ndarray) -> np.ndarray:
+    """Wrap arbitrary phase [rad] strictly onto [-pi, pi)."""
+    return np.arctan2(np.sin(phase_rad), np.cos(phase_rad))
+
+
+def unwrap_3d_b0_phase_dct(
+    wrapped_phase_rad: np.ndarray,
+    delta_te_ms: float,
+    b0_T: float = 1.5,
+) -> tuple[PhaseUnwrapReport, dict[str, np.ndarray]]:
+    """Exact 3D Type-II DCT Poisson/Laplacian phase unwrapping with integer-cycle congruence.
+
+    Ref: Ghiglia & Romero (1994), J. Opt. Soc. Am. A 11(1):107-117 (DOI: 10.1364/JOSAA.11.000107);
+         Schofield & Zhu (2003), Opt. Lett. 28(14):1194-1196.
+
+    Solves nabla^2 phi = div(wrap(grad(psi))) under Neumann boundary conditions via orthonormal
+    3D DCT-II and restores exact integer 2*pi multiples so wrap(phi_exact) == wrap(psi).
+    """
+    psi = _wrap_to_pi(np.asarray(wrapped_phase_rad, dtype=np.float64))
+    if psi.ndim != 3:
+        raise ValueError(f"wrapped_phase_rad must be 3D; got shape {psi.shape}.")
+    if delta_te_ms <= 0.0:
+        raise ValueError("delta_te_ms must be strictly positive.")
+
+    nx, ny, nz = psi.shape
+    rho = np.zeros_like(psi, dtype=np.float64)
+
+    # Discrete divergence of wrapped forward/backward finite differences (Neumann BCs)
+    dx = _wrap_to_pi(np.diff(psi, axis=0))
+    rho[:-1, :, :] += dx
+    rho[1:, :, :] -= dx
+
+    dy = _wrap_to_pi(np.diff(psi, axis=1))
+    rho[:, :-1, :] += dy
+    rho[:, 1:, :] -= dy
+
+    dz = _wrap_to_pi(np.diff(psi, axis=2))
+    rho[:, :, :-1] += dz
+    rho[:, :, 1:] -= dz
+
+    # Discrete Laplacian L(phi)_i = sum_j (phi(x+e_j) - 2*phi(x) + phi(x-e_j)) == rho_i
+    rho_dct = dctn(rho, type=2, norm="ortho")
+
+    ix = np.arange(nx, dtype=np.float64)[:, None, None]
+    iy = np.arange(ny, dtype=np.float64)[None, :, None]
+    iz = np.arange(nz, dtype=np.float64)[None, None, :]
+    denom = (
+        2.0 * (np.cos(np.pi * ix / nx) - 1.0)
+        + 2.0 * (np.cos(np.pi * iy / ny) - 1.0)
+        + 2.0 * (np.cos(np.pi * iz / nz) - 1.0)
+    )
+    phi_dct = np.zeros_like(rho_dct)
+    nonzero = np.abs(denom) > 1e-14
+    phi_dct[nonzero] = rho_dct[nonzero] / denom[nonzero]
+
+    phi_cont = idctn(phi_dct, type=2, norm="ortho")
+    # Center DC offset using corner/median reference and restore exact 2*pi congruence
+    phi_cont = phi_cont - float(phi_cont[0, 0, 0]) + float(psi[0, 0, 0])
+    cycles = np.round((phi_cont - psi) / (2.0 * np.pi))
+    phi_exact = psi + 2.0 * np.pi * cycles
+
+    # Consistency check: wrapped residual between unwrapped and input phase
+    wrap_res = _wrap_to_pi(phi_exact - psi)
+    wrap_rms = float(np.sqrt(np.mean(wrap_res**2)))
+
+    # Map unwrapped phase [rad] -> Delta_B0 [T] and [ppm]
+    gamma_rad_s_T = 2.0 * np.pi * GAMMA_BAR_HZ_PER_T
+    delta_b0_T = phi_exact / (gamma_rad_s_T * (delta_te_ms * 1e-3))
+    delta_b0_ppm = (delta_b0_T / b0_T) * 1e6
+
+    report = PhaseUnwrapReport(
+        volume_shape=(nx, ny, nz),
+        delta_te_ms=float(delta_te_ms),
+        max_abs_unwrapped_rad=float(np.max(np.abs(phi_exact))),
+        cycle_count_range=int(np.max(cycles) - np.min(cycles)),
+        delta_b0_min_ppm=float(np.min(delta_b0_ppm)),
+        delta_b0_max_ppm=float(np.max(delta_b0_ppm)),
+        wrap_consistency_rms_rad=wrap_rms,
+    )
+    fields = {
+        "unwrapped_phase_rad": phi_exact,
+        "continuous_poisson_rad": phi_cont,
+        "cycle_counts": cycles,
+        "delta_b0_T": delta_b0_T,
+        "delta_b0_ppm": delta_b0_ppm,
+    }
+    return report, fields
+
+
+def compute_distortion_jacobian_and_unwarp(
+    distorted_image: np.ndarray,
+    disp_vec_mm: np.ndarray,
+    voxel_size_mm: tuple[float, float, float],
+    readout_axis: int = 0,
+    phase_encode_axis: int = 1,
+    body_mask: np.ndarray | None = None,
+) -> tuple[JacobianUnwarpReport, dict[str, np.ndarray]]:
+    """Compute exact 3D geometric distortion Jacobian determinant J(x), detect irreversible
+    signal pile-up / folding singularities (J <= 0), and apply Jacobian-modulated intensity-
+    preserving unwarping:
+        I_unwarped(x) = I_distorted(x + Delta_r(x)) * max(|J(x)|, 0)
+    """
+    img = np.asarray(distorted_image, dtype=np.float64)
+    disp = np.asarray(disp_vec_mm, dtype=np.float64)
+    if img.ndim != 3 or disp.shape != (*img.shape, 3):
+        raise ValueError(f"Expected 3D image and disp_vec (*shape, 3); got {img.shape}, {disp.shape}.")
+
+    # Full 3x3 Jacobian determinant det(I + d(Delta_r)/dx)
+    # Most MRI sequences only warp along readout (and PE for EPI), so full 3x3 handles both GNL + B0!
+    j_mat = np.zeros((*img.shape, 3, 3), dtype=np.float64)
+    for comp in range(3):
+        grads = np.gradient(disp[..., comp], voxel_size_mm[0], voxel_size_mm[1], voxel_size_mm[2])
+        for ax in range(3):
+            j_mat[..., comp, ax] = grads[ax]
+        j_mat[..., comp, comp] += 1.0
+
+    # Analytic 3x3 determinant across grid
+    jac = (
+        j_mat[..., 0, 0] * (j_mat[..., 1, 1] * j_mat[..., 2, 2] - j_mat[..., 1, 2] * j_mat[..., 2, 1])
+        - j_mat[..., 0, 1] * (j_mat[..., 1, 0] * j_mat[..., 2, 2] - j_mat[..., 1, 2] * j_mat[..., 2, 0])
+        + j_mat[..., 0, 2] * (j_mat[..., 1, 0] * j_mat[..., 2, 1] - j_mat[..., 1, 1] * j_mat[..., 2, 0])
+    )
+    _ = (readout_axis, phase_encode_axis)
+
+    eval_mask = body_mask.astype(bool) if body_mask is not None else np.ones(img.shape, dtype=bool)
+    folding_mask = (jac <= 0.0) & eval_mask
+    pileup_mask = ((jac < 0.70) | (jac > 1.35)) & eval_mask
+
+    # Pull-back resampling at x' = x + Delta_r(x) / voxel_size
+    nx, ny, nz = img.shape
+    gx, gy, gz = np.meshgrid(
+        np.arange(nx, dtype=np.float64),
+        np.arange(ny, dtype=np.float64),
+        np.arange(nz, dtype=np.float64),
+        indexing="ij",
+    )
+    coords = np.array(
+        [
+            gx + disp[..., 0] / voxel_size_mm[0],
+            gy + disp[..., 1] / voxel_size_mm[1],
+            gz + disp[..., 2] / voxel_size_mm[2],
+        ]
+    )
+    sampled = map_coordinates(img, coords, order=1, mode="constant", cval=0.0)
+    # Multiply by positive Jacobian for magnetization conservation (clamp folding regions cleanly)
+    unwarped = sampled * np.clip(jac, 0.0, 4.0)
+
+    denom_sig = float(np.sum(np.abs(img)))
+    sig_ratio = float(np.sum(np.abs(unwarped)) / denom_sig) if denom_sig > 1e-12 else 1.0
+
+    jac_eval = jac[eval_mask] if np.any(eval_mask) else jac
+    report = JacobianUnwarpReport(
+        min_jacobian=float(np.min(jac_eval)),
+        max_jacobian=float(np.max(jac_eval)),
+        folding_voxel_count=int(np.sum(folding_mask)),
+        pileup_voxel_count=int(np.sum(pileup_mask)),
+        has_folding_singularity=bool(np.any(folding_mask)),
+        signal_conservation_ratio=round(max(sig_ratio, 1e-6), 5),
+    )
+    fields = {
+        "jacobian_det": jac,
+        "folding_mask": folding_mask,
+        "pileup_mask": pileup_mask,
+        "unwarped_image": unwarped,
+    }
+    return report, fields

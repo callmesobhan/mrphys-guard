@@ -16,11 +16,14 @@ import numpy as np
 
 from mrphys_guard.distortion_solver import GAMMA_BAR_HZ_PER_T, relative_snr_from_bandwidth
 from mrphys_guard.ir import (
+    AbstentionCode,
     AbstentionError,
+    ConflictCore,
     ConstraintCheckResult,
     ImplantConditionSpec,
     MRSafetyLabel,
     MRSequenceSpec,
+    MultiImplantCSPVerdict,
     RFCoilType,
     SafetyCSPVerdict,
     ScannerFieldSpec,
@@ -36,11 +39,40 @@ GAMMA_RAD_PER_S_T: float = 2.0 * np.pi * GAMMA_BAR_HZ_PER_T
 SAR_COUPLING_WB: float = 0.0868
 SAR_COUPLING_HEAD: float = 0.1400
 
-# IEC 60601-2-33 (Ed. 4, 2022) whole-body and head SAR limits [W/kg]
+# IEC 60601-2-33 (Ed. 4, 2022) whole-body/head SAR limits [W/kg] & PNS stimulation limits [%]
 IEC_SAR_LIMITS: dict[str, dict[str, float]] = {
-    "normal": {"wb_sar": 2.0, "head_sar": 3.2},
-    "first_level_controlled": {"wb_sar": 4.0, "head_sar": 3.2},
+    "normal": {"wb_sar": 2.0, "head_sar": 3.2, "pns_pct": 80.0},
+    "first_level_controlled": {"wb_sar": 4.0, "head_sar": 3.2, "pns_pct": 100.0},
 }
+
+# IEC 60601-2-33 default whole-body PNS hyperbolic curve constants
+IEC_PNS_RHEOBASE_T_PER_S: float = 20.0
+IEC_PNS_CHRONAXIE_MS: float = 0.36
+
+
+def compute_iec_pns_percentage(
+    slew_rate_T_per_m_s: float,
+    peak_gradient_mT_per_m: float = 35.0,
+    effective_radius_m: float = 0.22,
+    rheobase_T_per_s: float = IEC_PNS_RHEOBASE_T_PER_S,
+    chronaxie_ms: float = IEC_PNS_CHRONAXIE_MS,
+) -> float:
+    """Compute IEC 60601-2-33 Peripheral Nerve Stimulation (PNS) percentage [%].
+
+    Uses the standard IEC hyperbolic strength-duration nerve excitation threshold:
+        (dB/dt)_threshold = rheobase * (1 + chronaxie / tau_ramp)
+        tau_ramp = G_max / slew_rate
+        PNS [%] = 100 * (slew_rate * r_eff) / (dB/dt)_threshold
+
+    IEC 60601-2-33 limits: <= 80% in Normal Operating Mode, <= 100% in First-Level Controlled Mode.
+    """
+    if slew_rate_T_per_m_s <= 0.0:
+        return 0.0
+    g_max_T_per_m = peak_gradient_mT_per_m * 1e-3
+    tau_ramp_ms = (g_max_T_per_m / slew_rate_T_per_m_s) * 1e3
+    dbdt_threshold = rheobase_T_per_s * (1.0 + chronaxie_ms / max(tau_ramp_ms, 1e-4))
+    dbdt_eff = slew_rate_T_per_m_s * effective_radius_m
+    return float(100.0 * dbdt_eff / dbdt_threshold)
 
 
 # ---------------------------------------------------------------------------
@@ -210,8 +242,9 @@ def compute_sequence_rf_physics(
         else:
             wb_sar = max(wb_sar, sequence.reported_sar_W_per_kg)
 
-    # Approximate peak peripheral dB/dt = slew_rate * effective_radius
+    # Approximate peak peripheral dB/dt = slew_rate * effective_radius & IEC PNS %
     est_db_dt = sequence.slew_rate_T_per_m_s * scanner_bore_radius_m
+    pns_pct = compute_iec_pns_percentage(sequence.slew_rate_T_per_m_s)
 
     rel_snr = relative_snr_from_bandwidth(
         bandwidth_hz_per_px=sequence.bandwidth_hz_per_px,
@@ -226,6 +259,7 @@ def compute_sequence_rf_physics(
         head_sar_W_per_kg=float(head_sar),
         slew_rate_T_per_m_s=float(sequence.slew_rate_T_per_m_s),
         estimated_db_dt_T_per_s=float(est_db_dt),
+        pns_stimulation_pct=round(pns_pct, 2),
         relative_snr=float(rel_snr),
         scan_duration_min=float(sequence.scan_duration_min),
     )
@@ -451,6 +485,18 @@ def verify_implant_safety_csp(
             )
         )
 
+        # IEC 60601-2-33 chronaxie/rheobase PNS stimulation limit
+        checks.append(
+            _numeric_check(
+                constraint_name="iec_pns_stimulation",
+                sequence_name=seq.name,
+                observed=est.pns_stimulation_pct,
+                limit=iec_limits["pns_pct"],
+                unit="%",
+                rationale="IEC 60601-2-33 hyperbolic nerve stimulation threshold (80% normal / 100% first-level).",
+            )
+        )
+
     violated = [
         f"{c.sequence_name}:{c.constraint_name} ({c.observed_value} {c.unit} > {c.limit_value} {c.unit})"
         for c in checks
@@ -481,5 +527,146 @@ def verify_implant_safety_csp(
         sequence_estimates=estimates,
         checks=checks,
         violated_constraints=violated,
+        summary=summary,
+    )
+
+
+def verify_multi_implant_safety_csp(
+    scanner: ScannerFieldSpec,
+    sequences: list[MRSequenceSpec],
+    implants: list[ImplantConditionSpec],
+) -> MultiImplantCSPVerdict:
+    """Formally verify a protocol against multiple co-existing implants simultaneously.
+
+    Computes the exact intersection of all ASTM F2503 / IEC 60601-2-33 safety envelopes,
+    identifies which device governs each tightest ceiling, and emits minimal UNSAT conflict
+    cores when devices have disjoint static-field / RF-coil requirements or protocol violations.
+    """
+    if not implants:
+        raise ValueError("At least one ImplantConditionSpec is required.")
+
+    per_verdicts: list[SafetyCSPVerdict] = []
+    conflicts: list[ConflictCore] = []
+
+    # Step 1: Evaluate each implant individually (preserving hard ASTM F2503 abstentions)
+    for imp in implants:
+        v = verify_implant_safety_csp(scanner, sequences, imp, raise_on_abstain=False)
+        per_verdicts.append(v)
+        if v.verdict == "ABSTAIN":
+            conflicts.append(
+                ConflictCore(
+                    conflict_type="HARD_ASTM_F2503_ABSTAIN",
+                    involved_devices=[imp.device_id],
+                    constraint_name=v.abstention_code.value if v.abstention_code else "ABSTAIN",
+                    explanation=v.summary,
+                )
+            )
+
+    abstain_verdicts = [v for v in per_verdicts if v.verdict == "ABSTAIN"]
+    if abstain_verdicts:
+        first_code: AbstentionCode | None = abstain_verdicts[0].abstention_code
+        return MultiImplantCSPVerdict(
+            scanner_name=scanner.scanner_name,
+            implant_ids=[i.device_id for i in implants],
+            verdict="ABSTAIN",
+            abstention_code=first_code,
+            per_implant_verdicts=per_verdicts,
+            conflict_cores=conflicts,
+            summary=(
+                f"ABSTAIN: {len(abstain_verdicts)} co-existing implant(s) triggered hard ASTM F2503 "
+                f"abstention ({first_code.value if first_code else 'ABSTAIN'})."
+            ),
+        )
+
+    # Step 2: Intersect static B0 fields and RF coils across all MR_CONDITIONAL devices
+    b0_sets = [
+        [round(b, 2) for b in imp.allowed_b0_T]
+        for imp in implants
+        if imp.allowed_b0_T is not None
+    ]
+    if b0_sets:
+        common_b0 = sorted(set(b0_sets[0]).intersection(*b0_sets[1:]))
+        if not common_b0:
+            conflicts.append(
+                ConflictCore(
+                    conflict_type="MUTUALLY_INCOMPATIBLE_IMPLANTS",
+                    involved_devices=[i.device_id for i in implants if i.allowed_b0_T is not None],
+                    constraint_name="static_field_b0",
+                    explanation=(
+                        "Co-existing implants have disjoint permitted static magnetic fields B0; "
+                        "no single scanner field strength can satisfy all devices simultaneously."
+                    ),
+                )
+            )
+    else:
+        common_b0 = [scanner.b0_T]
+
+    coil_sets = [set(imp.allowed_rf_coils) for imp in implants if imp.allowed_rf_coils is not None]
+    if coil_sets and not set.intersection(*coil_sets):
+        conflicts.append(
+            ConflictCore(
+                conflict_type="MUTUALLY_INCOMPATIBLE_IMPLANTS",
+                involved_devices=[i.device_id for i in implants if i.allowed_rf_coils is not None],
+                constraint_name="rf_coil_type",
+                explanation="Co-existing implants have disjoint permitted transmit RF coil sets.",
+            )
+        )
+
+    # Step 3: Compute tightest intersected scalar limits & identify governing bottleneck device
+    governing: dict[str, str] = {}
+
+    def _min_limit(attr: str, label: str) -> float | None:
+        pairs = [(getattr(imp, attr), imp.device_id) for imp in implants if getattr(imp, attr) is not None]
+        if not pairs:
+            return None
+        val, dev = min(pairs, key=lambda p: float(p[0]))
+        governing[label] = dev
+        return float(val)
+
+    eff_b1 = _min_limit("max_b1_rms_uT", "max_b1_rms_uT")
+    eff_wb_sar = _min_limit("max_wb_sar_W_per_kg", "max_wb_sar_W_per_kg")
+    eff_slew = _min_limit("max_slew_rate_T_per_m_s", "max_slew_rate_T_per_m_s")
+    eff_time = _min_limit("max_active_scan_time_min", "max_active_scan_time_min")
+    _min_limit("max_spatial_gradient_T_per_m", "max_spatial_gradient_T_per_m")
+
+    # Step 4: Collect minimal per-constraint violation conflict cores
+    for v in per_verdicts:
+        for chk in v.checks:
+            if not chk.satisfied:
+                conflicts.append(
+                    ConflictCore(
+                        conflict_type="PROTOCOL_CONSTRAINT_VIOLATION",
+                        involved_devices=[v.implant_id],
+                        constraint_name=f"{chk.sequence_name}:{chk.constraint_name}",
+                        explanation=(
+                            f"Device '{v.implant_id}' violated {chk.constraint_name} on "
+                            f"'{chk.sequence_name}': observed {chk.observed_value} {chk.unit} > "
+                            f"limit {chk.limit_value} {chk.unit}."
+                        ),
+                    )
+                )
+
+    verdict = "PASS" if not conflicts else "VIOLATION"
+    summary = (
+        f"PASS: Protocol simultaneously satisfies all {len(implants)} co-existing implants "
+        f"(governing B1+rms: {governing.get('max_b1_rms_uT', 'IEC')}, "
+        f"WB SAR: {governing.get('max_wb_sar_W_per_kg', 'IEC')})."
+        if verdict == "PASS"
+        else f"VIOLATION: {len(conflicts)} conflict core(s) detected across {len(implants)} implants."
+    )
+
+    return MultiImplantCSPVerdict(
+        scanner_name=scanner.scanner_name,
+        implant_ids=[i.device_id for i in implants],
+        verdict=verdict,
+        abstention_code=None,
+        effective_b0_intersection_T=common_b0,
+        effective_max_b1_rms_uT=eff_b1,
+        effective_max_wb_sar_W_per_kg=eff_wb_sar,
+        effective_max_slew_rate_T_per_m_s=eff_slew,
+        effective_max_active_time_min=eff_time,
+        governing_device_by_limit=governing,
+        per_implant_verdicts=per_verdicts,
+        conflict_cores=conflicts,
         summary=summary,
     )

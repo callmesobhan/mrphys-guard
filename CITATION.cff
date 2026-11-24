@@ -2,7 +2,7 @@ cff-version: 1.2.0
 title: "mrphys-guard: 3D MRI Geometric Distortion, Synthetic-CT Physics Audit, ERE & Formal IEC 60601-2-33 RF/Implant Safety Engine"
 message: "If you use mrphys-guard in research or education, please cite this software and the underlying medical physics standards."
 type: software
-version: "0.1.0"
+version: "0.2.0"
 date-released: "2026-11-24"
 license: Apache-2.0
 authors:

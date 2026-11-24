@@ -6,7 +6,7 @@
 - **Title:** 1.5T Cardiac & Brain MRI Protocol with MR-Conditional Dual-Chamber Pacemaker
 - **Scanner:** 1.5T Diagnostic MRI (IEC Normal Mode) ($B_0 = 1.5\text{ T}$, $|dB/dx|_{\max} = 17.0\text{ T/m}$)
 - **Implant:** Generic MR-Conditional Dual-Chamber Cardiac Pacemaker (1.5T) (`MR_CONDITIONAL`)
-- **Co-Design Status:** **CONVERGED** | **Critic-Verifier Gate:** **APPROVED** (`21/21`)
+- **Co-Design Status:** **CONVERGED** | **Critic-Verifier Gate:** **APPROVED** (`24/24`)
 
 ## Before vs. After Protocol Metrics
 
@@ -21,7 +21,7 @@
 
 ## Critic-Verifier Findings
 
-- Formal IEC 60601-2-33 CSP verified: 20/20 PASS.
+- Formal IEC 60601-2-33 CSP verified: 23/23 PASS.
 - Diagnostic SNR floor verified: min relSNR = 1.091 >= 0.55.
 
 ## Co-Designed Sequence Parameters
@@ -35,4 +35,4 @@
 ## Cryptographic Provenance
 
 - **Chain Valid:** `True` (2 records)
-- **Terminal Record SHA-256:** `0d377c844d5aed7cb54e673df4f503db875245e2bc8b283e4e9d5ff217565d9b`
+- **Terminal Record SHA-256:** `595931649c65f3e4b08cac8aed6dd2637f41a695a7c1f5eddd90fa8050841b01`

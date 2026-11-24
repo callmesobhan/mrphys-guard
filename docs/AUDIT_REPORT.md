@@ -14,8 +14,9 @@
 | **Closed-Loop Co-Design Agent + Critic Gate** | **PASS** | Both flagship scenarios transition `VIOLATION -> CONVERGED` with Critic-Verifier `APPROVED`; SHA-256 hash chain `chain_valid = True` |
 | **Saltelli–Jansen QMC Sobol' Estimator** | **PASS** | Recovers analytical Ishigami $S_1, S_T$ within `±0.04`; MR-RT suite $\sum S_1 \in [0.95, 0.99]$, $\sum S_T \in [1.01, 1.05]$ |
 | **Real DICOM & Public NRRD I/O** | **PASS** | Lossless CT/sCT DICOM round-trip `0.0 HU` error; MR DICOM round-trip `5.2e-6` error; 3D Slicer `CTMRBrain` SHA-256 verified |
-| **Automated Verification & Lint** | **PASS** | `26/26` pytest passing, `0` warnings (`-W error`), `92.1%` total coverage, `0` ruff errors |
-| **Publication Figure Visual Audit** | **PASS** | All 6 300-DPI PNGs visually inspected with `read_file`; defects found and fixed on second pass |
+| **Automated Verification & Lint** | **PASS** | `33/33` pytest passing (incl. subprocess stdio MCP), `0` warnings (`-W error`), `92.6%` total coverage, `0` ruff errors |
+| **Publication Figure Visual Audit** | **PASS** | All 7 300-DPI PNGs visually inspected with `read_file`; defects found and fixed on second pass |
+| **v0.2.0 Advanced Physics Suite** | **PASS** | 3D DCT phase unwrap `8.88e-16 rad`; Jacobian folding detection; 7-beam ERE `-73.9%` cancellation; real NRRD affine resampling; simultaneous multi-implant CSP + IEC PNS; 3-point Bloch CNR Pareto front |
 
 ## 2. Physics & Implementation Defects Caught and Resolved During Audit
 

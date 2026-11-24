@@ -1,0 +1,76 @@
+cff-version: 1.2.0
+title: "mrphys-guard: 3D MRI Geometric Distortion, Synthetic-CT Physics Audit, ERE & Formal IEC 60601-2-33 RF/Implant Safety Engine"
+message: "If you use mrphys-guard in research or education, please cite this software and the underlying medical physics standards."
+type: software
+version: "0.1.0"
+date-released: "2026-11-24"
+license: Apache-2.0
+authors:
+  - name: "mrphys-guard Contributors"
+keywords:
+  - medical physics
+  - MRI geometric distortion
+  - MR-Linac
+  - synthetic CT
+  - electron return effect
+  - IEC 60601-2-33
+  - ASTM F2503
+  - AAPM TG-284
+  - Model Context Protocol
+references:
+  - type: article
+    title: "Task Group 284 report: Magnetic resonance imaging simulation in radiotherapy: Considerations for clinical implementation, optimization, and quality assurance"
+    authors:
+      - family-names: Glide-Hurst
+        given-names: Carri K.
+    journal: "Medical Physics"
+    year: 2021
+    volume: 48
+    issue: 7
+    doi: "10.1002/mp.14695"
+  - type: article
+    title: "SynthRAD2023 Grand Challenge dataset: Generating synthetic CT for radiotherapy"
+    authors:
+      - family-names: Thummerer
+        given-names: Adrian
+    journal: "Medical Physics"
+    year: 2023
+    volume: 50
+    issue: 7
+    doi: "10.1002/mp.16529"
+  - type: article
+    title: "Application of a Fourier-based method for rapid calculation of field inhomogeneity due to spatial variation of magnetic susceptibility"
+    authors:
+      - family-names: Marques
+        given-names: José P.
+      - family-names: Bowtell
+        given-names: Richard
+    journal: "Concepts in Magnetic Resonance Part B: Magnetic Resonance Engineering"
+    year: 2005
+    volume: 25B
+    issue: 1
+    doi: "10.1002/cmr.b.20034"
+  - type: article
+    title: "Integrating a MRI scanner with a 6 MV radiotherapy accelerator: dose increase at tissue-air interfaces in a lateral magnetic field due to returning electrons"
+    authors:
+      - family-names: Raaijmakers
+        given-names: A. J. E.
+      - family-names: Raaymakers
+        given-names: B. W.
+      - family-names: Lagendijk
+        given-names: J. J. W.
+    journal: "Physics in Medicine and Biology"
+    year: 2005
+    volume: 50
+    issue: 7
+    doi: "10.1088/0031-9155/50/7/002"
+  - type: article
+    title: "Variance based sensitivity analysis of model output. Design and estimator for the total sensitivity index"
+    authors:
+      - family-names: Saltelli
+        given-names: Andrea
+    journal: "Computer Physics Communications"
+    year: 2010
+    volume: 181
+    issue: 2
+    doi: "10.1016/j.cpc.2009.09.018"

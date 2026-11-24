@@ -1,0 +1,569 @@
+{
+  "research_only_notice": "RESEARCH SOFTWARE \u2014 NOT A MEDICAL DEVICE.",
+  "analytical_lorentz_sphere": {
+    "sphere_radius_mm": 12.0,
+    "interior_mean_ppm": 0.0,
+    "interior_rms_ppm": 0.019098,
+    "exterior_relative_l2_error": 0.0054
+  },
+  "spherical_harmonic_gnl": {
+    "lmax_3_rms_mm": 0.21708,
+    "lmax_5_rms_mm": 0.03409,
+    "lmax_5_max_mm": 0.07787
+  },
+  "pelvis_3d_distortion": {
+    "low_bw_185": {
+      "b0_T": 1.5,
+      "bandwidth_hz_per_px": 185.0,
+      "voxel_size_mm": [
+        2.5,
+        2.5,
+        2.5
+      ],
+      "gnl_max_mm": 0.06467287201565543,
+      "gnl_rms_mm": 0.024749687046591584,
+      "gnl_p95_mm": 0.04593419119054917,
+      "susceptibility_delta_b0_min_ppm": -47.972548625383894,
+      "susceptibility_delta_b0_max_ppm": 97.51995767103175,
+      "susceptibility_max_mm": 84.16528181380994,
+      "susceptibility_rms_mm": 8.084692241969966,
+      "epi_phase_encode_max_mm": 0.0,
+      "total_max_mm": 84.16927221865215,
+      "total_rms_mm": 8.0847059621673,
+      "total_p95_mm": 16.493855720645847,
+      "target_roi_max_mm": 7.311889497772729,
+      "target_roi_p95_mm": 6.046194778790422,
+      "fraction_exceeding_0p5mm": 0.8507583035959374,
+      "fraction_exceeding_1p0mm": 0.6916517979687071,
+      "srs_tolerance_mm": 0.5,
+      "passes_srs_tolerance": false,
+      "passes_tg284_2mm_dsv": false,
+      "relative_snr": 18.16369355372176,
+      "harmonic_order_lmax": 5,
+      "harmonic_fit_residual_rms_mm": 0.034088687381867294
+    },
+    "high_bw_560": {
+      "b0_T": 1.5,
+      "bandwidth_hz_per_px": 560.0,
+      "voxel_size_mm": [
+        2.5,
+        2.5,
+        2.5
+      ],
+      "gnl_max_mm": 0.06467287201565543,
+      "gnl_rms_mm": 0.024749687046591584,
+      "gnl_p95_mm": 0.04593419119054917,
+      "susceptibility_delta_b0_min_ppm": -47.972548625383894,
+      "susceptibility_delta_b0_max_ppm": 97.51995767103175,
+      "susceptibility_max_mm": 27.804602027776497,
+      "susceptibility_rms_mm": 2.6708358299365065,
+      "epi_phase_encode_max_mm": 0.0,
+      "total_max_mm": 27.80859458542969,
+      "total_rms_mm": 2.6709263387546387,
+      "total_p95_mm": 5.447313218810001,
+      "target_roi_max_mm": 2.415971458104781,
+      "target_roi_p95_mm": 1.99737926689776,
+      "fraction_exceeding_0p5mm": 0.5803252813615153,
+      "fraction_exceeding_1p0mm": 0.3763724951962668,
+      "srs_tolerance_mm": 0.5,
+      "passes_srs_tolerance": false,
+      "passes_tg284_2mm_dsv": false,
+      "relative_snr": 10.439892262204078,
+      "harmonic_order_lmax": 5,
+      "harmonic_fit_residual_rms_mm": 0.034088687381867294
+    }
+  },
+  "pelvis_sct_audit": {
+    "volume_shape": [
+      64,
+      64,
+      48
+    ],
+    "voxel_size_mm": [
+      2.5,
+      2.5,
+      2.5
+    ],
+    "body_volume_cc": 910.75,
+    "mae_hu_body": 175.0960698303493,
+    "mae_hu_bone": 537.0923661158541,
+    "mae_hu_air": 14.137820239847693,
+    "mean_rel_ed_error": 0.15984250804199918,
+    "max_wepl_error_mm": 151.39125067573983,
+    "estimated_6mv_dose_error_pct": 52.986937736508935,
+    "bone_to_air_swap_voxels": 534,
+    "missing_metal_voxels": 1888,
+    "contour_truncation_voxels": 3216,
+    "anomalies": [
+      {
+        "anomaly_type": "BONE_TO_AIR_SWAP",
+        "severity": "CRITICAL",
+        "voxel_count": 534,
+        "volume_cc": 8.34375,
+        "mean_hu_discrepancy": -1800.0,
+        "estimated_wepl_error_mm": 62.0,
+        "description": "Detected 534 voxels (8.34 cc) of cortical bone silently misclassified as air (< -400 HU)."
+      },
+      {
+        "anomaly_type": "MISSING_METAL_ARTIFACT",
+        "severity": "CRITICAL",
+        "voxel_count": 1888,
+        "volume_cc": 29.5,
+        "mean_hu_discrepancy": -2955.0,
+        "estimated_wepl_error_mm": 145.75,
+        "description": "Detected 1888 voxels (29.50 cc) of high-Z implant missing from sCT (replaced by soft-tissue HU)."
+      },
+      {
+        "anomaly_type": "BODY_CONTOUR_TRUNCATION",
+        "severity": "HIGH",
+        "voxel_count": 3216,
+        "volume_cc": 50.25,
+        "mean_hu_discrepancy": -905.1741293532339,
+        "estimated_wepl_error_mm": 41.6,
+        "description": "Detected 3216 voxels (50.25 cc) of truncated skin/body contour where MRI shows tissue but sCT predicts air."
+      }
+    ],
+    "overall_status": "FAIL"
+  },
+  "pelvis_ere_by_field": {
+    "0.00T": {
+      "b0_T": 0.0,
+      "beam_energy_mv": 6.0,
+      "mean_secondary_electron_mev": 1.5,
+      "beam_to_b0_angle_deg": 90.0,
+      "gyroradius_mm": null,
+      "interface_voxel_count": 6496,
+      "high_risk_voxel_count": 0,
+      "peak_dose_enhancement_pct": 0.0,
+      "p95_interface_enhancement_pct": 0.0,
+      "mean_interface_enhancement_pct": 0.0,
+      "dominant_interfaces": [
+        "none_detected"
+      ],
+      "risk_tier": "NONE"
+    },
+    "0.35T": {
+      "b0_T": 0.35,
+      "beam_energy_mv": 6.0,
+      "mean_secondary_electron_mev": 1.5,
+      "beam_to_b0_angle_deg": 90.0,
+      "gyroradius_mm": 18.53656432337297,
+      "interface_voxel_count": 6496,
+      "high_risk_voxel_count": 0,
+      "peak_dose_enhancement_pct": 5.628653610104639,
+      "p95_interface_enhancement_pct": 4.861134383958503,
+      "mean_interface_enhancement_pct": 2.335748129406625,
+      "dominant_interfaces": [
+        "internal_air_cavity_wall (rectum/trachea/sinus)",
+        "external_skin_exit_surface"
+      ],
+      "risk_tier": "LOW"
+    },
+    "1.50T": {
+      "b0_T": 1.5,
+      "beam_energy_mv": 6.0,
+      "mean_secondary_electron_mev": 1.5,
+      "beam_to_b0_angle_deg": 90.0,
+      "gyroradius_mm": 4.325198342120361,
+      "interface_voxel_count": 6496,
+      "high_risk_voxel_count": 712,
+      "peak_dose_enhancement_pct": 28.685088631848576,
+      "p95_interface_enhancement_pct": 24.77361022977998,
+      "mean_interface_enhancement_pct": 11.903582411506394,
+      "dominant_interfaces": [
+        "internal_air_cavity_wall (rectum/trachea/sinus)",
+        "external_skin_exit_surface"
+      ],
+      "risk_tier": "HIGH"
+    },
+    "3.00T": {
+      "b0_T": 3.0,
+      "beam_energy_mv": 6.0,
+      "mean_secondary_electron_mev": 1.5,
+      "beam_to_b0_angle_deg": 90.0,
+      "gyroradius_mm": 2.1625991710601804,
+      "interface_voxel_count": 6496,
+      "high_risk_voxel_count": 2184,
+      "peak_dose_enhancement_pct": 42.63249555607222,
+      "p95_interface_enhancement_pct": 36.81915860829248,
+      "mean_interface_enhancement_pct": 17.691401646792883,
+      "dominant_interfaces": [
+        "internal_air_cavity_wall (rectum/trachea/sinus)",
+        "external_skin_exit_surface"
+      ],
+      "risk_tier": "CRITICAL"
+    }
+  },
+  "public_ctmr_brain": {
+    "available": true,
+    "provenance_tag_raw": "PUBLIC_OPEN_CLINICAL",
+    "provenance_tag_sct_perturbation": "DERIVED_PERTURBATION",
+    "ct_native_shape": [
+      512,
+      507,
+      76
+    ],
+    "ct_native_voxel_mm": [
+      0.4297,
+      0.4297,
+      2.528
+    ],
+    "mr_t1_native_shape": [
+      512,
+      512,
+      21
+    ],
+    "mr_t1_native_voxel_mm": [
+      0.4688,
+      0.4688,
+      7.0
+    ],
+    "ere_by_field_strength": {
+      "0.00T": {
+        "b0_T": 0.0,
+        "beam_energy_mv": 6.0,
+        "mean_secondary_electron_mev": 1.5,
+        "beam_to_b0_angle_deg": 90.0,
+        "gyroradius_mm": null,
+        "interface_voxel_count": 91246,
+        "high_risk_voxel_count": 0,
+        "peak_dose_enhancement_pct": 0.0,
+        "p95_interface_enhancement_pct": 0.0,
+        "mean_interface_enhancement_pct": 0.0,
+        "dominant_interfaces": [
+          "none_detected"
+        ],
+        "risk_tier": "NONE"
+      },
+      "0.35T": {
+        "b0_T": 0.35,
+        "beam_energy_mv": 6.0,
+        "mean_secondary_electron_mev": 1.5,
+        "beam_to_b0_angle_deg": 90.0,
+        "gyroradius_mm": 18.53656432337297,
+        "interface_voxel_count": 91246,
+        "high_risk_voxel_count": 0,
+        "peak_dose_enhancement_pct": 14.607357132786104,
+        "p95_interface_enhancement_pct": 4.986712164921825,
+        "mean_interface_enhancement_pct": 2.2875227159499802,
+        "dominant_interfaces": [
+          "internal_air_cavity_wall (rectum/trachea/sinus)",
+          "external_skin_exit_surface"
+        ],
+        "risk_tier": "MODERATE"
+      },
+      "1.50T": {
+        "b0_T": 1.5,
+        "beam_energy_mv": 6.0,
+        "mean_secondary_electron_mev": 1.5,
+        "beam_to_b0_angle_deg": 90.0,
+        "gyroradius_mm": 4.325198342120361,
+        "interface_voxel_count": 91246,
+        "high_risk_voxel_count": 5074,
+        "peak_dose_enhancement_pct": 43.23103987431911,
+        "p95_interface_enhancement_pct": 20.595751637122582,
+        "mean_interface_enhancement_pct": 10.227037386276958,
+        "dominant_interfaces": [
+          "internal_air_cavity_wall (rectum/trachea/sinus)",
+          "external_skin_exit_surface"
+        ],
+        "risk_tier": "CRITICAL"
+      },
+      "3.00T": {
+        "b0_T": 3.0,
+        "beam_energy_mv": 6.0,
+        "mean_secondary_electron_mev": 1.5,
+        "beam_to_b0_angle_deg": 90.0,
+        "gyroradius_mm": 2.1625991710601804,
+        "interface_voxel_count": 91246,
+        "high_risk_voxel_count": 14238,
+        "peak_dose_enhancement_pct": 53.58715757550737,
+        "p95_interface_enhancement_pct": 28.55098202215901,
+        "mean_interface_enhancement_pct": 14.709121923868091,
+        "dominant_interfaces": [
+          "internal_air_cavity_wall (rectum/trachea/sinus)",
+          "external_skin_exit_surface"
+        ],
+        "risk_tier": "CRITICAL"
+      }
+    },
+    "derived_sct_audit": {
+      "volume_shape": [
+        256,
+        254,
+        38
+      ],
+      "voxel_size_mm": [
+        0.859376,
+        0.8593759999999999,
+        5.0559997558593786
+      ],
+      "body_volume_cc": 3346.74795061406,
+      "mae_hu_body": 111.14601279444146,
+      "mae_hu_bone": 294.41325701953957,
+      "mae_hu_air": 0.0,
+      "mean_rel_ed_error": 0.09994763120166693,
+      "max_wepl_error_mm": 127.40607477065096,
+      "estimated_6mv_dose_error_pct": 44.592126169727834,
+      "bone_to_air_swap_voxels": 25089,
+      "missing_metal_voxels": 27,
+      "contour_truncation_voxels": 46931,
+      "anomalies": [
+        {
+          "anomaly_type": "BONE_TO_AIR_SWAP",
+          "severity": "CRITICAL",
+          "voxel_count": 25089,
+          "volume_cc": 93.68214748425306,
+          "mean_hu_discrepancy": -1874.6438678305233,
+          "estimated_wepl_error_mm": 113.222788,
+          "description": "Detected 25089 voxels (93.68 cc) of cortical bone silently misclassified as air (< -400 HU)."
+        },
+        {
+          "anomaly_type": "MISSING_METAL_ARTIFACT",
+          "severity": "HIGH",
+          "voxel_count": 27,
+          "volume_cc": 0.1008178078869159,
+          "mean_hu_discrepancy": -2777.777777777778,
+          "estimated_wepl_error_mm": 9.1093856,
+          "description": "Detected 27 voxels (0.10 cc) of high-Z implant missing from sCT (replaced by soft-tissue HU)."
+        },
+        {
+          "anomaly_type": "BODY_CONTOUR_TRUNCATION",
+          "severity": "HIGH",
+          "voxel_count": 46931,
+          "volume_cc": 175.24002007188332,
+          "mean_hu_discrepancy": -957.421001044086,
+          "estimated_wepl_error_mm": 82.22509568,
+          "description": "Detected 46931 voxels (175.24 cc) of truncated skin/body contour where MRI shows tissue but sCT predicts air."
+        }
+      ],
+      "overall_status": "FAIL"
+    }
+  },
+  "agent_codesign": {
+    "prostate_srs_hip_gas": {
+      "status": "CONVERGED",
+      "critic_status": "APPROVED",
+      "baseline_csp": "VIOLATION",
+      "optimized_csp": "PASS",
+      "baseline_dist_mm": 1.0821,
+      "optimized_dist_mm": 0.4776,
+      "baseline_b1_uT": 3.354,
+      "optimized_b1_uT": 3.008
+    },
+    "pacemaker_cardiac_brain": {
+      "status": "CONVERGED",
+      "critic_status": "APPROVED",
+      "baseline_csp": "VIOLATION",
+      "optimized_csp": "PASS",
+      "baseline_b1_uT": 3.871,
+      "optimized_b1_uT": 1.879,
+      "baseline_wb_sar": 2.927,
+      "optimized_wb_sar": 0.689
+    },
+    "mr_unsafe_abstention": {
+      "verdict": "ABSTAIN",
+      "abstention_code": "MR_UNSAFE_DEVICE_DETECTED"
+    }
+  },
+  "sobol_sensitivity": {
+    "geometric_error": {
+      "output_name": "Total Target 3D Geometric Error",
+      "output_unit": "mm",
+      "n_base_samples": 1024,
+      "total_evaluations": 6144,
+      "output_mean": 0.6712484554604278,
+      "output_std": 0.21865826413837525,
+      "output_p05": 0.3448488214120464,
+      "output_p95": 1.0717010778025395,
+      "sum_s1": 0.9562787890351102,
+      "sum_st": 1.0485031594069083,
+      "indices": [
+        {
+          "parameter": "bandwidth_hz_per_px",
+          "unit": "Hz/px",
+          "s1": 0.4156646704364809,
+          "s1_ci95": [
+            0.1838952111658035,
+            0.6307773107957797
+          ],
+          "st": 0.4591654427425484,
+          "st_ci95": [
+            0.40932571620081215,
+            0.5073939523868078
+          ],
+          "interaction_index": 0.04350077230606747
+        },
+        {
+          "parameter": "air_cavity_delta_chi_ppm",
+          "unit": "ppm",
+          "s1": 0.11746237881589527,
+          "s1_ci95": [
+            -0.0020177954489528655,
+            0.21675699866940334
+          ],
+          "st": 0.15826480670855902,
+          "st_ci95": [
+            0.13877259719845564,
+            0.18110754387116793
+          ],
+          "interaction_index": 0.04080242789266375
+        },
+        {
+          "parameter": "gnl_calibration_residual_mm",
+          "unit": "mm",
+          "s1": 0.4220989702352771,
+          "s1_ci95": [
+            0.23102709513734296,
+            0.6162003364510334
+          ],
+          "st": 0.4291917039533923,
+          "st_ci95": [
+            0.38640415031656455,
+            0.46664918557098667
+          ],
+          "interaction_index": 0.007092733718115196
+        },
+        {
+          "parameter": "sct_hu_error_hu",
+          "unit": "HU",
+          "s1": 0.0010527695474569134,
+          "s1_ci95": [
+            -0.01064328277429873,
+            0.013692409879158485
+          ],
+          "st": 0.0018812060024086215,
+          "st_ci95": [
+            0.0016216105532542836,
+            0.002138511103280129
+          ],
+          "interaction_index": 0.0008284364549517081
+        }
+      ]
+    },
+    "dosimetric_uncertainty": {
+      "output_name": "sCT & MR-Only Target Dosimetric Uncertainty",
+      "output_unit": "%",
+      "n_base_samples": 1024,
+      "total_evaluations": 6144,
+      "output_mean": 1.8364138206751361,
+      "output_std": 0.40304802455531663,
+      "output_p05": 1.166772348942141,
+      "output_p95": 2.498908074696178,
+      "sum_s1": 0.991317088623976,
+      "sum_st": 1.0091479327927986,
+      "indices": [
+        {
+          "parameter": "bandwidth_hz_per_px",
+          "unit": "Hz/px",
+          "s1": 0.06345455927139092,
+          "s1_ci95": [
+            -0.06987839703012116,
+            0.17621778174020775
+          ],
+          "st": 0.07006387518293637,
+          "st_ci95": [
+            0.062040221934671895,
+            0.07917461541105777
+          ],
+          "interaction_index": 0.006609315911545455
+        },
+        {
+          "parameter": "air_cavity_delta_chi_ppm",
+          "unit": "ppm",
+          "s1": 0.44535911155956276,
+          "s1_ci95": [
+            0.18642335306771649,
+            0.6686361675316034
+          ],
+          "st": 0.4517582828298256,
+          "st_ci95": [
+            0.41554735700319634,
+            0.48920865879935777
+          ],
+          "interaction_index": 0.006399171270262849
+        },
+        {
+          "parameter": "gnl_calibration_residual_mm",
+          "unit": "mm",
+          "s1": 0.05728685265379428,
+          "s1_ci95": [
+            -0.04247809124430036,
+            0.1504668925563037
+          ],
+          "st": 0.05912994354673769,
+          "st_ci95": [
+            0.054622326548510645,
+            0.06516453768421232
+          ],
+          "interaction_index": 0.0018430908929434053
+        },
+        {
+          "parameter": "sct_hu_error_hu",
+          "unit": "HU",
+          "s1": 0.42521656513922806,
+          "s1_ci95": [
+            0.157663577200094,
+            0.7200026564669922
+          ],
+          "st": 0.4281958312332988,
+          "st_ci95": [
+            0.3938702394362601,
+            0.46532169373806276
+          ],
+          "interaction_index": 0.0029792660940707316
+        }
+      ]
+    }
+  },
+  "dicom_roundtrip": {
+    "mr_max_abs_err": 5.188067444872324e-06,
+    "ct_max_abs_err_hu": 0.0,
+    "mr_bandwidth_hz_per_px": 560.0,
+    "mr_b0_T": 1.5,
+    "ct_modality": "CT"
+  },
+  "provenance_ledger": {
+    "engine_version": "0.1.0",
+    "chain_valid": true,
+    "record_count": 3,
+    "records": [
+      {
+        "record_id": "mrpg-0001-1b42a23b",
+        "timestamp_utc": "2026-11-24T19:22:49.521128+00:00",
+        "engine_version": "0.1.0",
+        "operation": "benchmark_lorentz_sphere",
+        "data_origin": "SYNTHETIC_PHYSICS_FIXTURE",
+        "input_sha256": "5638850a24b3746bd7e0f2e705c1eab8eab7ed11dca8e22b133fb9cd2df3cce4",
+        "output_sha256": "eac06b6b6ffa9c97cb1f7c8a78c5f67d22334b98db6eb33699ae9712d0905a7c",
+        "previous_record_sha256": null,
+        "record_sha256": "b39225de0072568cf08c45dd6c655d22ae71c4c80360a86bcae08f5d480a83e0",
+        "metadata": {}
+      },
+      {
+        "record_id": "mrpg-0002-9b511212",
+        "timestamp_utc": "2026-11-24T19:22:49.953662+00:00",
+        "engine_version": "0.1.0",
+        "operation": "benchmark_3d_distortion",
+        "data_origin": "SYNTHETIC_PHYSICS_FIXTURE",
+        "input_sha256": "32af787fcc435a313097bf5a3eed78889568025a208c1d36bc75da0e0a9c7fdb",
+        "output_sha256": "bdb10bc233e81a0b9969fbe9a6400ad296e48245b3e66047da454c68e22fbde9",
+        "previous_record_sha256": "b39225de0072568cf08c45dd6c655d22ae71c4c80360a86bcae08f5d480a83e0",
+        "record_sha256": "0b1d0707bd2a0797f9e5d62c029288a97789302ca15e0d04e5c9a87d091d65e1",
+        "metadata": {}
+      },
+      {
+        "record_id": "mrpg-0003-e5f0d0da",
+        "timestamp_utc": "2026-11-24T19:22:51.624456+00:00",
+        "engine_version": "0.1.0",
+        "operation": "benchmark_public_ctmr_brain",
+        "data_origin": "PUBLIC_OPEN_CLINICAL",
+        "input_sha256": "446f815214baa5517ddb495e7b35e4743df44a97367393bf70a08c46719e74db",
+        "output_sha256": "cf6fa65d99c2dddcf4f01e9dce896ac1a24de182e327d0579fbf7203453fdca5",
+        "previous_record_sha256": "0b1d0707bd2a0797f9e5d62c029288a97789302ca15e0d04e5c9a87d091d65e1",
+        "record_sha256": "3c8d6382606f1ab67482262655eb8228f4c681c659bd615e17d0db255386e17e",
+        "metadata": {}
+      }
+    ]
+  }
+}

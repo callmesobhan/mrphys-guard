@@ -1,0 +1,42 @@
+{
+  "dataset_id": "slicer_ctmr_brain_paired",
+  "upstream_project": "3D Slicer (Slicer/SlicerTestingData)",
+  "upstream_license": "3D Slicer Software License (permissive BSD-style; unrestricted sample data)",
+  "fetched_utc": "2026-11-24T19:15:42.470616+00:00",
+  "provenance_tag": "PUBLIC_OPEN_CLINICAL",
+  "files": [
+    {
+      "filename": "LICENSE",
+      "url": "https://raw.githubusercontent.com/Slicer/Slicer/main/License.txt",
+      "sha256": "03fc5cd907e5c2004ce199d66318d32a08fa2de2b5b28bee184edda6307d0b86",
+      "size_bytes": 10514,
+      "modality": "LICENSE",
+      "description": "Verbatim 3D Slicer Software License Agreement"
+    },
+    {
+      "filename": "CT-brain.nrrd",
+      "url": "https://github.com/Slicer/SlicerTestingData/releases/download/SHA256/6a5b6caccb76576a863beb095e3bfb910c50ca78f4c9bf043aa42f976cfa53d1",
+      "sha256": "6a5b6caccb76576a863beb095e3bfb910c50ca78f4c9bf043aa42f976cfa53d1",
+      "size_bytes": 16366792,
+      "modality": "CT",
+      "description": "Paired clinical head CT volume (3D Slicer CTMRBrain sample)"
+    },
+    {
+      "filename": "MR-brain-T1.nrrd",
+      "url": "https://github.com/Slicer/SlicerTestingData/releases/download/SHA256/2da3f655ed20356ee8cdf32aa0f8f9420385de4b6e407d28e67f9974d7ce1593",
+      "sha256": "2da3f655ed20356ee8cdf32aa0f8f9420385de4b6e407d28e67f9974d7ce1593",
+      "size_bytes": 11010581,
+      "modality": "MR_T1",
+      "description": "Paired clinical head T1-weighted MRI volume (3D Slicer CTMRBrain sample)"
+    },
+    {
+      "filename": "MR-brain-T2.nrrd",
+      "url": "https://github.com/Slicer/SlicerTestingData/releases/download/SHA256/fa1fe5910a69182f2b03c0150d8151ac6c75df986449fb5a6c5ae67141e0f5e7",
+      "sha256": "fa1fe5910a69182f2b03c0150d8151ac6c75df986449fb5a6c5ae67141e0f5e7",
+      "size_bytes": 9503252,
+      "modality": "MR_T2",
+      "description": "Paired clinical head T2-weighted MRI volume (3D Slicer CTMRBrain sample)"
+    }
+  ],
+  "notes": "Real clinical paired brain CT + T1/T2 MRI volumes. Any synthetic-CT failure perturbations or MR-Linac implant protocols applied during mrphys-guard benchmarks are explicitly tagged DERIVED_PERTURBATION or SYNTHETIC_PHYSICS_FIXTURE in the cryptographic provenance ledger."
+}

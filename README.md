@@ -1,17 +1,18 @@
 # mrphys-guard
 
-**3D MRI Geometric Distortion, Synthetic-CT Physics Audit, Electron-Return-Effect (ERE) & Formal IEC 60601-2-33 RF/Implant Safety Constraint Engine — with Closed-Loop Sequence Co-Design Agent & MCP Server**
+**3D MRI Geometric Distortion, Synthetic-CT Physics Audit, Electron-Return-Effect (ERE), Formal IEC 60601-2-33 RF/Implant Safety CSP & MR-Only Ambiguity-to-DVH / Anisotropic Margin Certifier — with Agent Harness & MCP Server**
 
 [![Python 3.11 | 3.12](https://img.shields.io/badge/python-3.11%20%7C%203.12-0072B2.svg)](pyproject.toml)
-[![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-009E73.svg)](LICENSE)
-[![Tests: 33 Passed](https://img.shields.io/badge/pytest-33%20passed%20%7C%200%20warnings-009E73.svg)](tests/)
-[![Coverage: 92.6%](https://img.shields.io/badge/coverage-92.6%25-0072B2.svg)](docs/AUDIT_REPORT.md)
+[![License: Non-Commercial Research & Personal Use Only](https://img.shields.io/badge/license-Non--Commercial%20Research%20(Citation%20Required)%20%26%20Personal%20Use-D55E00.svg)](LICENSE)
+[![Tests: 37 Passed](https://img.shields.io/badge/pytest-37%20passed%20%7C%200%20warnings-009E73.svg)](tests/)
+[![Coverage: 92.9%](https://img.shields.io/badge/coverage-92.9%25-0072B2.svg)](docs/AUDIT_REPORT.md)
 [![Ruff: 0 Errors](https://img.shields.io/badge/ruff-0%20errors-009E73.svg)](pyproject.toml)
-[![MCP: JSON-RPC 2.0](https://img.shields.io/badge/MCP-8%20provenance--gated%20tools-E69F00.svg)](src/mrphys_guard/harness/mcp_server.py)
+[![MCP: JSON-RPC 2.0](https://img.shields.io/badge/MCP-9%20provenance--gated%20tools-E69F00.svg)](src/mrphys_guard/harness/mcp_server.py)
 [![Research Software](https://img.shields.io/badge/status-Research%20Software%20%E2%80%94%20NOT%20A%20MEDICAL%20DEVICE-D55E00.svg)](LICENSE)
 
-> **RESEARCH SOFTWARE — NOT A MEDICAL DEVICE.**
-> `mrphys-guard` is open-source computational medical physics software for research, algorithm verification, and education. It is **not** cleared or approved by the U.S. FDA, EU MDR, or any regulatory authority, and **must never** be used for clinical patient clearance, implant MR-safety sign-off, or radiation therapy treatment planning. Generic implant envelopes included in this repository are literature reference models and **never** replace manufacturer Instructions For Use (IFU) or qualified Medical Physicist / MR Safety Officer (MRSO) review.
+> **LICENSE & MEDICAL DEVICE NOTICE:**
+> - **Non-Commercial Research (with Mandatory Citation) & Personal Use Only:** Commercial use is **strictly prohibited** without separate written permission. Any research publication, preprint, thesis, or benchmark using `mrphys-guard` **must** cite [`CITATION.cff`](CITATION.cff) and link this repository. See [`LICENSE`](LICENSE).
+> - **RESEARCH SOFTWARE — NOT A MEDICAL DEVICE:** Not cleared or approved by the U.S. FDA, EU MDR, or any regulatory authority. Never use for clinical patient clearance, implant MR-safety sign-off, or radiation therapy treatment planning. Generic implant envelopes are literature reference models and never replace manufacturer IFUs or qualified Medical Physicist / MRSO review.
 
 ---
 
@@ -66,6 +67,9 @@ All numbers below are reproducible via `uv run python scripts/run_benchmarks.py`
 | **Multi-Beam 7-Field ERE (`v0.2.0`)** | Single-beam vs. 7-beam IMRT net peak | `+31.5%` $\to$ `+8.2%` (`-73.9%` reduction) | Opposing-beam cancellation & gantry avoidance |
 | **Multi-Implant CSP + IEC PNS (`v0.2.0`)** | Pacemaker + Ti Hip co-existence & PNS | `PASS` (pacemaker governs `2.0 uT`) | UNSAT conflict cores + IEC 80%/100% PNS |
 | **Bloch CNR Pareto Frontier (`v0.2.0`)** | 3 Critic-`APPROVED` clinical protocols | `0.394 mm` / `0.478 mm (CNR 1.89)` / `2.28 uT (CNR 2.67)` | Distortion vs. Bloch CNR vs. RF/SAR trade-off |
+| **MR-Only Ambiguity-to-DVH (`v0.3.0`)** | Readout polarity flip (`+Y` $\to$ `-Y`, 36.25 Gy SBRT) | Rectal $D_{0.1\text{cc}}$ overdose `+23.4 Gy` $\to$ `0.0 Gy` (`-28.3 Gy` saved) | Anisotropic van Herk `(2.70, 9.02, 2.70) mm` vs. `9.02 mm` iso |
+| **Dark-MRI sCT Blind-Spot Bound (`v0.3.0`)** | Physically ambiguous dark voxels $\Omega_{\text{ambig}}$ | `75.6 cc` (`9.2 mm` WEPL, `+11.4%` OAR sCT+ERE bound) | Uniquely exposes black-box AI sCT blind spots |
+| **Real DICOM `RTDOSE` + `RTSTRUCT` (`v0.3.0`)** | 32-bit Gy round-trip & `CLOSED_PLANAR` ROI Dice | `< 1e-5 Gy` error / CTV Dice `> 0.90` | Standards-compliant `pydicom` RT I/O |
 
 ---
 
@@ -93,6 +97,9 @@ All six figures are generated reproducibly by [`scripts/generate_figures.py`](sc
 
 ### 7. Multi-Beam IMRT ERE Cancellation & 3D DCT Dual-Echo Phase Unwrapping (`v0.2.0`)
 ![Figure 7: Multi-Beam ERE Cancellation and 3D DCT Phase Unwrapping](figures/fig7_multibeam_ere_and_phase_unwrap.png)
+
+### 8. MR-Only Ambiguity-to-DVH & Anisotropic van Herk PTV Margin Certifier (`v0.3.0`)
+![Figure 8: MR-Only Ambiguity-to-DVH and Anisotropic Margin Certifier](figures/fig8_ambiguity_dvh_and_anisotropic_margins.png)
 
 ---
 
@@ -166,7 +173,7 @@ print(result.status, result.critic.status, result.optimized_max_target_distortio
 </details>
 
 <details>
-<summary><strong>JSON-RPC 2.0 MCP Server Configuration & Tool Catalog (8 Tools)</strong></summary>
+<summary><strong>JSON-RPC 2.0 MCP Server Configuration & Tool Catalog (9 Tools)</strong></summary>
 
 Start the stdio MCP server with:
 ```bash
@@ -194,6 +201,7 @@ Exposed provenance-gated tools:
 6. `mrphys_run_sobol_sensitivity` — Exact Saltelli–Jansen QMC global Sobol' sensitivity analysis ($S_1, S_T$)
 7. `mrphys_multibeam_ere_optimize` — Multi-beam IMRT/VMAT opposing-beam ERE cancellation & low-ERE gantry ranking
 8. `mrphys_verify_multi_implant_csp` — Simultaneous multi-implant CSP with governing bottlenecks & UNSAT conflict cores
+9. `mrphys_certify_mronly_dvh_margins` — MR-Only Ambiguity-to-DVH, Dark-MRI sCT blind-spot bound, 6-direction readout optimizer & anisotropic van Herk PTV margins
 </details>
 
 ---
@@ -205,4 +213,4 @@ Exposed provenance-gated tools:
 - **Data Sources, Licenses & BibTeX:** [`DATA_SOURCES_AND_CITATIONS.md`](DATA_SOURCES_AND_CITATIONS.md)
 - **Public Dataset Attribution & SHA-256 Manifest:** [`data/public_ctmr_brain/ATTRIBUTION.md`](data/public_ctmr_brain/ATTRIBUTION.md) & [`MANIFEST.json`](data/public_ctmr_brain/MANIFEST.json)
 - **Sample Clinical Physics Dossiers:** [`results/dossier_prostate_srs_hip_gas.md`](results/dossier_prostate_srs_hip_gas.md) & [`results/dossier_pacemaker_cardiac_brain.md`](results/dossier_pacemaker_cardiac_brain.md)
-- **Software Citation:** [`CITATION.cff`](CITATION.cff) | **License:** [`LICENSE`](LICENSE) (Apache-2.0 + Medical Device Disclaimer)
+- **Software Citation (Mandatory for Research Use):** [`CITATION.cff`](CITATION.cff) | **License:** [`LICENSE`](LICENSE) (Non-Commercial Research with Citation & Personal Use Only + Medical Device Disclaimer)

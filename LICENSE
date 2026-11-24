@@ -1,157 +1,71 @@
-                                 Apache License
-                           Version 2.0, January 2004
-                        http://www.apache.org/licenses/
+========================================================================
+MRPHYS-GUARD NON-COMMERCIAL RESEARCH & PERSONAL USE LICENSE (v1.0)
+========================================================================
 
-   TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION
+Copyright (c) 2026 Sobhan Shahbazi and mrphys-guard Contributors.
+All rights reserved.
 
-   1. Definitions.
+1. DEFINITIONS
+   - "Software" means the mrphys-guard source code, binaries, physics models,
+     documentation, figures, and scripts distributed in this repository.
+   - "Non-Commercial Research Use" means academic, scientific, educational,
+     or non-profit research conducted without direct or indirect commercial
+     advantage, monetary compensation, or deployment in a commercial product
+     or fee-based service.
+   - "Personal Use" means private, non-commercial study, experimentation,
+     or evaluation by an individual on their own behalf.
+   - "Commercial Use" means any use intended for or directed toward
+     commercial advantage, monetary compensation, revenue generation,
+     clinical productization, commercial SaaS/API hosting, paid consulting,
+     commercial clinical trial software deployment, or proprietary
+     commercial AI/ML model training or evaluation.
 
-      "License" shall mean the terms and conditions for use, reproduction,
-      and distribution as defined by Sections 1 through 9 of this document.
+2. PERMITTED USES (RESEARCH WITH CITATION & PERSONAL USE ONLY)
+   Subject to the conditions in Sections 3 and 4, the Copyright Holder hereby
+   grants you a worldwide, royalty-free, non-exclusive, revocable license to:
+   (a) use, copy, modify, and create derivative works of the Software strictly
+       for Non-Commercial Research Use or Personal Use; and
+   (b) share or redistribute unmodified or modified copies strictly for
+       Non-Commercial Research Use or Personal Use, provided this exact
+       LICENSE file and all copyright notices are retained in full.
 
-      "Licensor" shall mean the copyright owner or entity authorized by
-      the copyright owner that is granting the License.
+3. MANDATORY ACADEMIC CITATION & ATTRIBUTION
+   Any publication, preprint, presentation, thesis, benchmark report, or
+   publicly shared research output that uses or builds upon the Software
+   MUST cite mrphys-guard using the bibliographic metadata provided in
+   CITATION.cff and DATA_SOURCES_AND_CITATIONS.md, and include a clear link
+   to the official repository (https://github.com/callmesobhan/mrphys-guard).
 
-      "Legal Entity" shall mean the union of the acting entity and all
-      other entities that control, are controlled by, or are under common
-      control with that entity. For the purposes of this definition,
-      "control" means (i) the power, direct or indirect, to cause the
-      direction or management of such entity, whether by contract or
-      otherwise, or (ii) ownership of fifty percent (50%) or more of the
-      outstanding shares, or (iii) beneficial ownership of such entity.
+4. STRICT PROHIBITION OF COMMERCIAL USE
+   NO COMMERCIAL USE IS PERMITTED under this License. You may NOT sell,
+   sublicense, rent, lease, host as a paid service, incorporate into a
+   commercial or proprietary product, or otherwise exploit the Software or
+   any derivative work for Commercial Use without prior separate written
+   commercial licensing permission from the Copyright Holder.
 
-      "You" (or "Your") shall mean an individual or Legal Entity
-      exercising permissions granted by this License.
+5. THIRD-PARTY DATA & DEPENDENCIES
+   Open-access third-party sample datasets bundled under `data/` (such as
+   3D Slicer `CTMRBrain` under `data/public_ctmr_brain/`) remain governed by
+   their respective upstream licenses archived alongside those files.
 
-      "Source" form shall mean the preferred form for making modifications,
-      including but not limited to software source code, documentation
-      source, and configuration files.
+6. RESEARCH SOFTWARE — NOT A MEDICAL DEVICE
+   mrphys-guard is scientific research and educational software. It is NOT
+   cleared, approved, or certified as a medical device by the U.S. FDA,
+   EU MDR (CE mark), Health Canada, or any other regulatory body. It MUST
+   NOT be used for clinical diagnosis, MRI patient clearance, implant
+   MR-safety sign-off, or radiation therapy treatment planning. All generic
+   implant profiles and dosimetric models are for computational physics
+   verification only and NEVER replace manufacturer Instructions For Use
+   (IFU) or qualified Medical Physicist / MR Safety Officer (MRSO) review.
 
-      "Object" form shall mean any form resulting from mechanical
-      transformation or translation of a Source form, including but
-      not limited to compiled object code, generated documentation,
-      and conversions to other media types.
+7. DISCLAIMER OF WARRANTY & LIMITATION OF LIABILITY
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+   OR IMPLIED, INCLUDING BUT NOT LIMITED TO WARRANTIES OF MERCHANTABILITY,
+   FITNESS FOR A PARTICULAR PURPOSE, ACCURACY, CLINICAL SAFETY, OR
+   NON-INFRINGEMENT. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS
+   BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+   CONSEQUENTIAL DAMAGES ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE.
 
-      "Work" shall mean the work of authorship, whether in Source or
-      Object form, made available under the License, as indicated by a
-      copyright notice that is included in or attached to the work
-      (an example is provided in the Appendix below).
-
-      "Derivative Works" shall mean any work, whether in Source or Object
-      form, that is based upon (or derived from) the Work and for which the
-      editorial revisions, annotations, annotations, elaborations, or other
-      modifications represent, as a whole, an original work of authorship.
-      For the purposes of this License, Derivative Works shall not include
-      works that remain separable from, or merely link (or bind by name) to
-      the interfaces of, the Work and Derivative Works thereof.
-
-      "Contribution" shall mean any work of authorship, including
-      the original version of the Work and any modifications or additions
-      to that Work or Derivative Works thereof, that is intentionally
-      submitted to Licensor for inclusion in the Work by the copyright owner
-      or by an individual or Legal Entity authorized to submit on behalf of
-      the copyright owner. For the purposes of this License, "submitted"
-      means any form of electronic, verbal, or written communication sent
-      to the Licensor or its representatives, including but not limited to
-      communication on electronic mailing lists, source code tracking systems,
-      and issue tracking systems that are managed by, or on behalf of, the
-      Licensor for the purpose of discussing and improving the Work, but
-      excluding communication that is conspicuously marked or otherwise
-      designated in writing by the Licensor as "Not a Contribution."
-
-      "Contributor" shall mean Licensor and any individual or Legal Entity
-      on behalf of whom a Contribution has been received by Licensor and
-      subsequently incorporated into the Work.
-
-   2. Grant of Copyright License. Subject to the terms and conditions of
-      this License, each Contributor hereby grants to You a perpetual,
-      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
-      copyright license to reproduce, prepare Derivative Works of,
-      publicly display, publicly perform, sublicense, and distribute the
-      Work and such Derivative Works in Source or Object form.
-
-   3. Grant of Patent License. Subject to the terms and conditions of
-      this License, each Contributor hereby grants to You a perpetual,
-      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
-      (except as stated in this section) patent license to make, have made,
-      use, offer to sell, sell, import, and otherwise transfer the Work,
-      where such license applies only to those patent claims licensable
-      by the Licensor that are necessarily infringed by their
-      Contribution(s) alone or by combination of their Contribution(s)
-      with the Work to which such Contribution(s) was submitted. If You
-      institute patent litigation against any entity (including a
-      cross-claim or counterclaim in a lawsuit) alleging that the Work
-      or a Contribution incorporated within the Work constitutes direct
-      or contributory patent infringement, then any patent licenses
-      granted to You under this License for that Work shall terminate
-      as of the date such litigation is filed.
-
-   4. Redistribution. You may reproduce and distribute copies of the
-      Work or Derivative Works thereof in any medium, with or without
-      modifications, and in Source or Object form, provided that You
-      meet the following conditions:
-
-      (a) You must give any other recipients of the Work or
-          Derivative Works a copy of this License; and
-
-      (b) You must cause any modified files to carry prominent notices
-          stating that You changed the files; and
-
-      (c) You must retain, in the Source form of any Derivative Works
-          that You distribute, all copyright notices, patent notices,
-          trademark notices, and attribution notices from the Source
-          form of the Work, excluding those notices that do not
-          pertain to any part of the Work; and
-
-      (d) If the Work includes a NOTICE text file as part of its
-          distribution, You may retain a copy of the NOTICE text file
-          within any Derivative Works that You distribute.
-
-   5. Submission of Contributions. Unless You explicitly state otherwise,
-      any Contribution intentionally submitted for inclusion in the Work
-      by You to the Licensor shall be under the terms and conditions of
-      this License, without any additional terms or conditions.
-
-   6. Trademarks. This License does not grant permission to use the trade
-      names, trademarks, service marks, or product names of the Licensor.
-
-   7. Disclaimer of Warranty. Unless required by applicable law or
-      agreed to in writing, Licensor provides the Work (and each
-      Contributor provides its Work) on an "AS IS" BASIS, WITHOUT
-      WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied,
-      including, without limitation, any warranties or conditions of
-      TITLE, NON-INFRINGEMENT, MERCHANTABILITY, or FITNESS FOR A
-      PARTICULAR PURPOSE.
-
-   8. Limitation of Liability. In no event and under no legal theory,
-      whether in tort (including negligence), contract, or otherwise,
-      unless required by applicable law (such as deliberate and grossly
-      negligent acts) or agreed to in writing, shall any Contributor be
-      liable to You for damages, including any direct, indirect, special,
-      incidental, or consequential damages of any character arising as a
-      result of this License or out of the use or inability to use the
-      Work.
-
-   9. Accepting Warranty or Additional Liability. While redistributing
-      the Work or Derivative Works thereof, You may choose to offer,
-      and charge a fee for, acceptance of support, warranty, or indemnity
-      obligations and/or other liability obligations consistent with this
-      License.
-
-   END OF TERMS AND CONDITIONS
-
-   Copyright 2026 mrphys-guard Contributors
-
-   ========================================================================
-   RESEARCH SOFTWARE — NOT A MEDICAL DEVICE
-   ========================================================================
-   mrphys-guard is open-source scientific research and educational software.
-   It is NOT cleared, approved, or certified as a medical device by the
-   U.S. FDA, EU MDR (CE mark), Health Canada, or any other regulatory body.
-   It MUST NOT be used for clinical diagnosis, MRI patient clearance,
-   implant MR-safety sign-off, or radiation therapy treatment planning.
-   All generic implant profiles included in this repository are literature
-   reference models for physics verification only and NEVER replace
-   manufacturer Instructions For Use (IFU) or qualified medical physicist
-   / MR Safety Officer (MRSO) review.
-   ========================================================================
+For commercial licensing inquiries, contact the Copyright Holder via
+https://github.com/callmesobhan/mrphys-guard.
+========================================================================

@@ -269,8 +269,8 @@ def test_mcp_server_end_to_end_stdio_subprocess() -> None:
     )
     responses = [json.loads(line) for line in proc.stdout.strip().splitlines() if line.strip()]
     assert len(responses) == 4  # notifications/initialized produces no response
-    assert responses[0]["result"]["serverInfo"]["version"] == "0.2.0"
-    assert len(responses[1]["result"]["tools"]) == 8
+    assert responses[0]["result"]["serverInfo"]["version"] == "0.3.0"
+    assert len(responses[1]["result"]["tools"]) == 9
     ere_out = responses[2]["result"]["structuredContent"]["result"]
     assert ere_out["cancellation_reduction_pct"] > 35.0
     mi_out = responses[3]["result"]["structuredContent"]["result"]

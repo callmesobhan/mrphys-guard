@@ -11,13 +11,16 @@ import nrrd
 import numpy as np
 import pydicom
 from pydicom.dataset import Dataset, FileDataset, FileMetaDataset
+from pydicom.sequence import Sequence
 from pydicom.uid import (
     CTImageStorage,
     ExplicitVRLittleEndian,
     MRImageStorage,
+    RTDoseStorage,
+    RTStructureSetStorage,
     generate_uid,
 )
-from scipy.ndimage import affine_transform
+from scipy.ndimage import affine_transform, binary_erosion
 
 from mrphys_guard.ir import MRSequenceSpec
 
@@ -324,3 +327,244 @@ def _opt_float(ds: Dataset, attr: str) -> float | None:
 def _opt_int(ds: Dataset, attr: str) -> int | None:
     val = getattr(ds, attr, None)
     return int(val) if val is not None else None
+
+
+# ---------------------------------------------------------------------------
+# Real DICOM-RT Dose (RTDOSE) & Structure Set (RTSTRUCT) Round-Trip I/O
+# ---------------------------------------------------------------------------
+
+
+def build_rtdose_dicom_dataset(
+    dose_gy_3d: np.ndarray,
+    voxel_size_mm: tuple[float, float, float],
+    origin_mm: tuple[float, float, float] = (0.0, 0.0, 0.0),
+    patient_id: str = "MRPG-RT-001",
+    series_description: str = "MRPhysGuard_RTDOSE",
+) -> FileDataset:
+    """Build a standards-compliant 3D DICOM RTDOSE FileDataset (32-bit unsigned Gy grid).
+
+    Stores slices as (nz, ny, nx) per DICOM RTDOSE convention with exact DoseGridScaling and
+    GridFrameOffsetVector so read_rtdose_dicom() recovers Gy values to < 1e-6 Gy.
+    """
+    dose = np.asarray(dose_gy_3d, dtype=np.float64)
+    if dose.ndim != 3:
+        raise ValueError(f"dose_gy_3d must be 3D (nx, ny, nz); got shape {dose.shape}.")
+    nx, ny, nz = dose.shape
+    max_gy = float(np.max(dose))
+    # 32-bit unsigned integer scaling (0 .. 2^31 - 1) for sub-microGray lossless fidelity
+    scaling = max(max_gy / float(2**30), 1e-9)
+    # Transpose (nx, ny, nz) -> DICOM (Frames=nz, Rows=ny, Columns=nx)
+    dicom_arr = np.transpose(dose, (2, 1, 0))
+    quantized = np.clip(np.round(dicom_arr / scaling), 0, 2**31 - 1).astype(np.uint32)
+
+    file_meta = FileMetaDataset()
+    file_meta.MediaStorageSOPClassUID = RTDoseStorage
+    file_meta.MediaStorageSOPInstanceUID = generate_uid()
+    file_meta.TransferSyntaxUID = ExplicitVRLittleEndian
+    file_meta.ImplementationClassUID = generate_uid()
+
+    ds = FileDataset("", {}, file_meta=file_meta, preamble=b"\0" * 128)
+    ds.SOPClassUID = RTDoseStorage
+    ds.SOPInstanceUID = file_meta.MediaStorageSOPInstanceUID
+    ds.StudyInstanceUID = generate_uid()
+    ds.SeriesInstanceUID = generate_uid()
+    ds.Modality = "RTDOSE"
+    ds.PatientID = patient_id
+    ds.PatientName = f"SYNTHETIC^{patient_id}"
+    ds.SeriesDescription = series_description
+
+    ds.DoseUnits = "GY"
+    ds.DoseType = "PHYSICAL"
+    ds.DoseSummationType = "PLAN"
+    ds.DoseGridScaling = float(scaling)
+
+    ds.NumberOfFrames = int(nz)
+    ds.Rows = int(ny)
+    ds.Columns = int(nx)
+    ds.PixelSpacing = [float(voxel_size_mm[1]), float(voxel_size_mm[0])]
+    ds.SliceThickness = float(voxel_size_mm[2])
+    ds.ImagePositionPatient = [float(origin_mm[0]), float(origin_mm[1]), float(origin_mm[2])]
+    ds.ImageOrientationPatient = [1.0, 0.0, 0.0, 0.0, 1.0, 0.0]
+    ds.GridFrameOffsetVector = [float(k * voxel_size_mm[2]) for k in range(nz)]
+
+    ds.SamplesPerPixel = 1
+    ds.PhotometricInterpretation = "MONOCHROME2"
+    ds.BitsAllocated = 32
+    ds.BitsStored = 32
+    ds.HighBit = 31
+    ds.PixelRepresentation = 0
+    ds.PixelData = quantized.tobytes()
+    return ds
+
+
+def read_rtdose_dicom(path: str | Path) -> LoadedMedicalVolume:
+    """Read a 3D DICOM RTDOSE file into (nx, ny, nz) float64 Gray array with physical spacing."""
+    ds = pydicom.dcmread(str(path))
+    if str(getattr(ds, "Modality", "")) != "RTDOSE":
+        raise ValueError(f"Expected RTDOSE DICOM at {path}; got Modality={getattr(ds, 'Modality', None)}.")
+
+    scaling = float(getattr(ds, "DoseGridScaling", 1.0))
+    raw = ds.pixel_array.astype(np.float64) * scaling
+    if raw.ndim == 2:
+        raw = raw[None, :, :]
+    # DICOM (nz, ny, nx) -> engine (nx, ny, nz)
+    dose_xyz = np.transpose(raw, (2, 1, 0))
+
+    px = getattr(ds, "PixelSpacing", [1.0, 1.0])
+    gfov = getattr(ds, "GridFrameOffsetVector", None)
+    if gfov is not None and len(gfov) >= 2:
+        dz = float(abs(gfov[1] - gfov[0]))
+    else:
+        dz = float(getattr(ds, "SliceThickness", 1.0))
+    vox = (float(px[1]), float(px[0]), dz)
+    origin = [float(v) for v in getattr(ds, "ImagePositionPatient", [0.0, 0.0, 0.0])]
+    affine = np.diag([vox[0], vox[1], vox[2], 1.0])
+    affine[:3, 3] = origin
+
+    return LoadedMedicalVolume(
+        array=np.ascontiguousarray(dose_xyz, dtype=np.float64),
+        voxel_size_mm=vox,
+        modality="RTDOSE",
+        source_path=str(path),
+        metadata={
+            "format": "DICOM_RTDOSE",
+            "DoseUnits": str(getattr(ds, "DoseUnits", "GY")),
+            "DoseType": str(getattr(ds, "DoseType", "PHYSICAL")),
+            "max_dose_gy": float(np.max(dose_xyz)),
+        },
+        affine_4x4=affine,
+    )
+
+
+def build_rtstruct_dicom_dataset(
+    roi_masks: dict[str, np.ndarray],
+    voxel_size_mm: tuple[float, float, float],
+    origin_mm: tuple[float, float, float] = (0.0, 0.0, 0.0),
+    patient_id: str = "MRPG-RT-001",
+    structure_set_label: str = "MRPG_RTSTRUCT",
+) -> FileDataset:
+    """Build a standards-compliant DICOM RTSTRUCT FileDataset from 3D binary ROI masks.
+
+    Encodes slice-by-slice CLOSED_PLANAR boundary polygons in physical mm coordinates (x, y, z)
+    under StructureSetROISequence and ROIContourSequence.
+    """
+    file_meta = FileMetaDataset()
+    file_meta.MediaStorageSOPClassUID = RTStructureSetStorage
+    file_meta.MediaStorageSOPInstanceUID = generate_uid()
+    file_meta.TransferSyntaxUID = ExplicitVRLittleEndian
+    file_meta.ImplementationClassUID = generate_uid()
+
+    ds = FileDataset("", {}, file_meta=file_meta, preamble=b"\0" * 128)
+    ds.SOPClassUID = RTStructureSetStorage
+    ds.SOPInstanceUID = file_meta.MediaStorageSOPInstanceUID
+    ds.StudyInstanceUID = generate_uid()
+    ds.SeriesInstanceUID = generate_uid()
+    ds.Modality = "RTSTRUCT"
+    ds.PatientID = patient_id
+    ds.PatientName = f"SYNTHETIC^{patient_id}"
+    ds.StructureSetLabel = structure_set_label[:16]
+
+    ref_for_uid = generate_uid()
+    ss_roi_seq = Sequence()
+    roi_contour_seq = Sequence()
+
+    dx, dy, dz = voxel_size_mm
+    ox, oy, oz = origin_mm
+
+    for roi_num, (roi_name, mask_raw) in enumerate(roi_masks.items(), start=1):
+        mask = np.asarray(mask_raw, dtype=bool)
+        if mask.ndim != 3:
+            raise ValueError(f"ROI mask '{roi_name}' must be 3D; got shape {mask.shape}.")
+
+        roi_item = Dataset()
+        roi_item.ROINumber = roi_num
+        roi_item.ReferencedFrameOfReferenceUID = ref_for_uid
+        roi_item.ROIName = roi_name
+        roi_item.ROIGenerationAlgorithm = "AUTOMATIC"
+        ss_roi_seq.append(roi_item)
+
+        rc_item = Dataset()
+        rc_item.ReferencedROINumber = roi_num
+        contour_seq = Sequence()
+
+        for kz in range(mask.shape[2]):
+            sl = mask[:, :, kz]
+            if not np.any(sl):
+                continue
+            # Extract boundary pixels and order azimuthally around slice centroid for closed planar loop
+            eroded = binary_erosion(sl, border_value=0)
+            boundary = sl & (~eroded)
+            pts = np.argwhere(boundary)
+            if pts.shape[0] < 3:
+                pts = np.argwhere(sl)
+            if pts.shape[0] < 3:
+                continue
+            cx, cy = float(np.mean(pts[:, 0])), float(np.mean(pts[:, 1]))
+            angles = np.arctan2(pts[:, 1] - cy, pts[:, 0] - cx)
+            ordered = pts[np.argsort(angles)]
+
+            z_mm = oz + kz * dz
+            coords: list[float] = []
+            for ix, iy in ordered:
+                coords.extend([round(ox + float(ix) * dx, 4), round(oy + float(iy) * dy, 4), round(z_mm, 4)])
+
+            c_item = Dataset()
+            c_item.ContourGeometricType = "CLOSED_PLANAR"
+            c_item.NumberOfContourPoints = int(ordered.shape[0])
+            c_item.ContourData = coords
+            contour_seq.append(c_item)
+
+        rc_item.ContourSequence = contour_seq
+        roi_contour_seq.append(rc_item)
+
+    ds.StructureSetROISequence = ss_roi_seq
+    ds.ROIContourSequence = roi_contour_seq
+    return ds
+
+
+def read_rtstruct_dicom(
+    path: str | Path,
+    grid_shape: tuple[int, int, int],
+    voxel_size_mm: tuple[float, float, float],
+    origin_mm: tuple[float, float, float] = (0.0, 0.0, 0.0),
+) -> dict[str, np.ndarray]:
+    """Read a DICOM RTSTRUCT file and rasterize each ROI's CLOSED_PLANAR polygons into 3D masks."""
+    from matplotlib.path import Path as MplPath
+
+    ds = pydicom.dcmread(str(path))
+    if str(getattr(ds, "Modality", "")) != "RTSTRUCT":
+        raise ValueError(f"Expected RTSTRUCT DICOM at {path}; got Modality={getattr(ds, 'Modality', None)}.")
+
+    num_to_name = {
+        int(item.ROINumber): str(item.ROIName)
+        for item in getattr(ds, "StructureSetROISequence", [])
+    }
+
+    nx, ny, nz = grid_shape
+    dx, dy, dz = voxel_size_mm
+    ox, oy, oz = origin_mm
+    gx, gy = np.meshgrid(np.arange(nx, dtype=np.float64), np.arange(ny, dtype=np.float64), indexing="ij")
+    grid_xy = np.column_stack([gx.ravel(), gy.ravel()])
+
+    masks: dict[str, np.ndarray] = {}
+    for rc in getattr(ds, "ROIContourSequence", []):
+        roi_num = int(rc.ReferencedROINumber)
+        name = num_to_name.get(roi_num, f"ROI_{roi_num}")
+        mask = np.zeros(grid_shape, dtype=bool)
+        for contour in getattr(rc, "ContourSequence", []):
+            raw_data = np.asarray([float(v) for v in contour.ContourData], dtype=np.float64)
+            if raw_data.size < 9:
+                continue
+            pts_mm = raw_data.reshape((-1, 3))
+            kz = int(round((float(pts_mm[0, 2]) - oz) / dz))
+            if not (0 <= kz < nz):
+                continue
+            poly_xy = np.column_stack([(pts_mm[:, 0] - ox) / dx, (pts_mm[:, 1] - oy) / dy])
+            inside = MplPath(poly_xy).contains_points(grid_xy, radius=-0.15).reshape((nx, ny))
+            # Also include exact boundary vertices so thin structures are preserved
+            bx = np.clip(np.round(poly_xy[:, 0]).astype(int), 0, nx - 1)
+            by = np.clip(np.round(poly_xy[:, 1]).astype(int), 0, ny - 1)
+            inside[bx, by] = True
+            mask[:, :, kz] |= inside
+        masks[name] = mask
+    return masks

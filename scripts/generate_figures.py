@@ -27,6 +27,11 @@ from mrphys_guard.distortion_solver import (
     relative_snr_from_bandwidth,
     unwrap_3d_b0_phase_dct,
 )
+from mrphys_guard.dvh_margin_certifier import (
+    build_clinical_srs_dose_grid,
+    build_rectal_wall_oar_mask,
+    certify_mronly_dvh_and_anisotropic_margins,
+)
 from mrphys_guard.harness.agent_orchestrator import (
     MRSequenceCoDesignAgent,
     build_pacemaker_cardiac_brain_scenario,
@@ -997,9 +1002,146 @@ def make_fig7_multibeam_ere_and_phase_unwrap() -> None:
     )
 
 
+def make_fig8_ambiguity_dvh_and_margins() -> None:
+    """Figure 8: MR-Only Physics-Ambiguity to DVH Curves & 6-Direction Readout/Margin Optimizer."""
+    shape = (64, 64, 48)
+    vox = (2.5, 2.5, 2.5)
+    phantom = build_pelvic_prostate_susceptibility_phantom(
+        shape=shape, voxel_size_mm=vox, include_rectal_gas=True, include_bilateral_hip_prostheses=True
+    )
+    true_pts, meas_pts, _ = generate_synthetic_grid_phantom(
+        extent_mm=180.0, spacing_mm=30.0, max_edge_distortion_mm=2.8, noise_sigma_mm=0.0
+    )
+    gnl_model = fit_spherical_harmonic_gnl(true_pts, meas_pts, lmax=5)
+    oar_wall = build_rectal_wall_oar_mask(
+        phantom["rectal_gas_mask"], phantom["body_mask"], phantom["prostate_mask"]
+    )
+    dose_gy = build_clinical_srs_dose_grid(
+        phantom["prostate_mask"], oar_wall, vox, prescription_gy=36.25
+    )
+    seq = MRSequenceSpec(
+        name="Pelvis_SBRT_BW240_AP",
+        b0_T=1.5,
+        bandwidth_hz_per_px=240.0,
+        voxel_size_mm=vox,
+        readout_axis=1,
+        phase_encode_axis=0,
+        tr_ms=15.0,
+        te_ms=4.5,
+    )
+    cert, art = certify_mronly_dvh_and_anisotropic_margins(
+        chi_si=phantom["chi_si"],
+        mri_volume=phantom["mri_t1"],
+        ct_or_sct_hu=phantom["ct_hu"],
+        dose_gy=dose_gy,
+        target_mask=phantom["prostate_mask"],
+        oar_mask=oar_wall,
+        body_mask=phantom["body_mask"],
+        sequence=seq,
+        gnl_model=gnl_model,
+        prescription_gy=36.25,
+    )
+
+    bins = art["dose_bins_gy"]
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12.6, 5.4), constrained_layout=False)
+    fig.subplots_adjust(left=0.065, right=0.965, top=0.84, bottom=0.18, wspace=0.27)
+    fig.suptitle(
+        "v0.3.0 MR-Only Ambiguity-to-DVH & Anisotropic van Herk PTV Margin Certifier (1.5T, 36.25 Gy/5 fx)",
+        fontsize=11.7,
+        fontweight="bold",
+        y=0.96,
+    )
+
+    # Panel A: Planned vs Distorted vs Worst-Case Dark-MRI sCT+ERE DVH bands
+    ax1.fill_between(bins, art["dvh_ctv_worst_case"], art["dvh_ctv_planned"], color=OI_BLUE, alpha=0.16, label="CTV Dark-MRI sCT+Distortion Band")
+    ax1.plot(bins, art["dvh_ctv_planned"], color=OI_BLUE, lw=2.3, label="Prostate CTV (Planned)")
+    ax1.plot(bins, art["dvh_ctv_distorted"], color=OI_SKY, lw=1.9, ls="--", label=f"CTV Distorted ({cert.baseline_readout_label})")
+    ax1.plot(bins, art["dvh_ctv_worst_case"], color=OI_BLUE, lw=1.7, ls=":", label="CTV Worst-Case (Dark-MRI sCT)")
+
+    ax1.fill_between(bins, art["dvh_oar_planned"], art["dvh_oar_worst_case"], color=OI_VERMILION, alpha=0.15, label="Rectal Wall sCT+ERE Blind-Spot Band")
+    ax1.plot(bins, art["dvh_oar_planned"], color=OI_VERMILION, lw=2.3, label="Rectal Wall (Planned)")
+    ax1.plot(bins, art["dvh_oar_worst_case"], color="#8B1E00", lw=1.8, ls="-.", label="Rectal Wall Worst-Case (sCT+ERE)")
+    ax1.axvline(36.25, color=OI_DARK, ls=":", lw=1.2)
+
+    ctv_imp = cert.organ_impacts[0]
+    oar_imp = cert.organ_impacts[1]
+    ax1.text(
+        0.03,
+        0.06,
+        f"CTV D98%: {ctv_imp.planned_d98_gy:.1f} → {ctv_imp.distorted_d98_gy:.1f} → {ctv_imp.worst_case_d98_gy:.1f} Gy (Worst)\n"
+        f"Rectum D0.1cc: {oar_imp.planned_d0p1cc_gy:.1f} → {oar_imp.distorted_d0p1cc_gy:.1f} → {oar_imp.worst_case_d0p1cc_gy:.1f} Gy\n"
+        f"Dark-MRI Ω_ambig = {cert.dark_mri_certificate.ambiguous_volume_cc:.1f} cc | Cert: {cert.overall_certificate}",
+        transform=ax1.transAxes,
+        fontsize=7.3,
+        va="bottom",
+        ha="left",
+        bbox={"boxstyle": "round,pad=0.25", "facecolor": "white", "edgecolor": "#CCCCCC", "alpha": 0.94},
+    )
+    ax1.set_xlim(0.0, 42.5)
+    ax1.set_ylim(-2.0, 114.0)
+    ax1.set_xlabel("Dose [Gy]")
+    ax1.set_ylabel("Cumulative Volume [%]")
+    ax1.set_title("Distortion-DVH & Worst-Case Dark-MRI sCT+ERE Envelope")
+    ax1.grid(True, alpha=0.25)
+    ax1.legend(loc="center left", bbox_to_anchor=(0.01, 0.54), fontsize=7.0)
+    _add_panel_label(ax1, "A")
+
+    # Panel B: 6-Direction Readout Axis & Polarity Optimization + Anisotropic van Herk Margins
+    cands = cert.readout_candidates
+    labels = [c.label for c in cands]
+    d98_loss = [max(0.0, -c.target_delta_d98_gy) for c in cands]
+    oar_inc = [max(0.0, c.oar_delta_d0p1cc_gy) for c in cands]
+    best_idx = next(i for i, c in enumerate(cands) if c.label == cert.recommended_readout_label)
+
+    x = np.arange(len(cands))
+    w = 0.34
+    b1 = ax2.bar(x - w / 2 - 0.02, d98_loss, width=w, color=OI_BLUE, edgecolor="black", lw=0.8, label="Target CTV D98% Loss [Gy]")
+    b2 = ax2.bar(x + w / 2 + 0.02, oar_inc, width=w, color=OI_VERMILION, edgecolor="black", lw=0.8, label="Rectal Wall D0.1cc Overdose [Gy]")
+
+    # Highlight recommended readout axis cleanly
+    ax2.axvspan(best_idx - 0.48, best_idx + 0.48, color=OI_GREEN, alpha=0.14, label=f"Optimal Readout: {cert.recommended_readout_label}")
+
+    ymax = max(max(d98_loss + oar_inc, default=1.0) * 1.65, 2.5)
+    for bar in b1:
+        h = bar.get_height()
+        ax2.text(bar.get_x() + bar.get_width() / 2.0, h + ymax * 0.018, f"{h:.1f}", ha="center", va="bottom", fontsize=7.2, fontweight="bold", color=OI_BLUE)
+    for bar in b2:
+        h = bar.get_height()
+        ax2.text(bar.get_x() + bar.get_width() / 2.0, h + ymax * 0.018, f"{h:.1f}", ha="center", va="bottom", fontsize=7.2, fontweight="bold", color=OI_VERMILION)
+
+    mx, my, mz = cert.recommended_anisotropic_margin_mm
+    iso_m = next(c.naive_isotropic_margin_mm for c in cands if c.label == cert.recommended_readout_label)
+    ax2.text(
+        0.98,
+        0.96,
+        f"Optimal Anisotropic van Herk PTV Margin:\n({mx:.2f}, {my:.2f}, {mz:.2f}) mm vs. Isotropic {iso_m:.2f} mm",
+        transform=ax2.transAxes,
+        ha="right",
+        va="top",
+        fontsize=7.4,
+        fontweight="bold",
+        color=OI_GREEN,
+        bbox={"boxstyle": "round,pad=0.24", "facecolor": "#F2FBF7", "edgecolor": OI_GREEN, "alpha": 0.94},
+    )
+    ax2.set_xticks(x)
+    ax2.set_xticklabels(labels, fontsize=7.8)
+    ax2.set_ylabel("Adverse Dosimetric Shift [Gy]")
+    ax2.set_ylim(0.0, ymax)
+    ax2.set_title("Readout Axis/Polarity Selection & Anisotropic Margin Impact")
+    ax2.grid(True, axis="y", alpha=0.25)
+    ax2.legend(loc="upper left", bbox_to_anchor=(0.0, 0.87), fontsize=7.2)
+    _add_panel_label(ax2, "B")
+
+    _save_fig(
+        fig,
+        "fig8_ambiguity_dvh_and_anisotropic_margins",
+        "mrphys-guard v0.3.0 | Non-rigid 3D MRI distortion -> DVH + Dark-MRI sCT+ERE blind-spot certifier + van Herk (2000) anisotropic margins | Research Software — NOT A MEDICAL DEVICE",
+    )
+
+
 def main() -> None:
     configure_journal_style()
-    print("Generating 7 publication-grade 300-DPI PNG + PDF figures...")
+    print("Generating 8 publication-grade 300-DPI PNG + PDF figures...")
     make_fig1_3d_distortion()
     make_fig2_bandwidth_pareto()
     make_fig3_sct_and_ere()
@@ -1007,7 +1149,8 @@ def main() -> None:
     make_fig5_phantom_qa()
     make_fig6_sobol()
     make_fig7_multibeam_ere_and_phase_unwrap()
-    print("All 7 figures generated cleanly in figures/.")
+    make_fig8_ambiguity_dvh_and_margins()
+    print("All 8 figures generated cleanly in figures/.")
 
 
 if __name__ == "__main__":

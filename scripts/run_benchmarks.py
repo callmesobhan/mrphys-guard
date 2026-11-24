@@ -15,8 +15,12 @@ from mrphys_guard.dicom_io import (
     LoadedMedicalVolume,
     build_ct_dicom_dataset,
     build_mr_dicom_dataset,
+    build_rtdose_dicom_dataset,
+    build_rtstruct_dicom_dataset,
     load_nrrd_volume,
     read_dicom_physics,
+    read_rtdose_dicom,
+    read_rtstruct_dicom,
     resample_volume_to_reference,
     save_dicom,
 )
@@ -30,6 +34,11 @@ from mrphys_guard.distortion_solver import (
     generate_synthetic_grid_phantom,
     solve_susceptibility_b0_map,
     unwrap_3d_b0_phase_dct,
+)
+from mrphys_guard.dvh_margin_certifier import (
+    build_clinical_srs_dose_grid,
+    build_rectal_wall_oar_mask,
+    certify_mronly_dvh_and_anisotropic_margins,
 )
 from mrphys_guard.harness.agent_orchestrator import (
     MRSequenceCoDesignAgent,
@@ -323,6 +332,52 @@ def main() -> None:
     )
     pareto_cands = generate_pareto_protocol_candidates(build_prostate_srs_hip_gas_scenario())
 
+    # v0.3.0 MR-Only Ambiguity-to-DVH & Anisotropic van Herk PTV Margin Certifier + RTDOSE/RTSTRUCT round-trip
+    oar_wall = build_rectal_wall_oar_mask(
+        phantom["rectal_gas_mask"], phantom["body_mask"], phantom["prostate_mask"]
+    )
+    dose_gy = build_clinical_srs_dose_grid(
+        phantom["prostate_mask"], oar_wall, (2.5, 2.5, 2.5), prescription_gy=36.25
+    )
+    seq_dvh = MRSequenceSpec(
+        name="Pelvis_SBRT_BW240_AP",
+        b0_T=1.5,
+        bandwidth_hz_per_px=240.0,
+        voxel_size_mm=(2.5, 2.5, 2.5),
+        readout_axis=1,
+        phase_encode_axis=0,
+        tr_ms=15.0,
+        te_ms=4.5,
+    )
+    dvh_cert, _ = certify_mronly_dvh_and_anisotropic_margins(
+        chi_si=phantom["chi_si"],
+        mri_volume=phantom["mri_t1"],
+        ct_or_sct_hu=phantom["ct_hu"],
+        dose_gy=dose_gy,
+        target_mask=phantom["prostate_mask"],
+        oar_mask=oar_wall,
+        body_mask=phantom["body_mask"],
+        sequence=seq_dvh,
+        gnl_model=gnl_l5,
+        prescription_gy=36.25,
+    )
+    # Real DICOM RTDOSE & RTSTRUCT lossless round-trip check
+    rtdose_ds = build_rtdose_dicom_dataset(dose_gy, (2.5, 2.5, 2.5))
+    rtstruct_ds = build_rtstruct_dicom_dataset(
+        {"Prostate_CTV": phantom["prostate_mask"], "Rectal_Wall": oar_wall}, (2.5, 2.5, 2.5)
+    )
+    rtdose_path = save_dicom(rtdose_ds, dcm_dir / "synthetic_pelvis_rtdose.dcm")
+    rtstruct_path = save_dicom(rtstruct_ds, dcm_dir / "synthetic_pelvis_rtstruct.dcm")
+    rtdose_rt = read_rtdose_dicom(rtdose_path)
+    rtstruct_rt = read_rtstruct_dicom(rtstruct_path, phantom["prostate_mask"].shape, (2.5, 2.5, 2.5))
+    ctv_inter = int(np.sum(rtstruct_rt["Prostate_CTV"] & phantom["prostate_mask"]))
+    ctv_dice = 2.0 * ctv_inter / max(1, int(np.sum(rtstruct_rt["Prostate_CTV"]) + np.sum(phantom["prostate_mask"])))
+    rt_dicom_metrics = {
+        "rtdose_max_abs_err_gy": float(np.max(np.abs(rtdose_rt.array - dose_gy))),
+        "rtstruct_ctv_dice": round(ctv_dice, 4),
+        "rtstruct_rois_recovered": sorted(rtstruct_rt.keys()),
+    }
+
     summary = {
         "research_only_notice": "RESEARCH SOFTWARE — NOT A MEDICAL DEVICE.",
         "analytical_lorentz_sphere": sphere_metrics,
@@ -330,6 +385,10 @@ def main() -> None:
             "lmax_3_rms_mm": round(gnl_l3.fit_residual_rms_mm, 5),
             "lmax_5_rms_mm": round(gnl_l5.fit_residual_rms_mm, 5),
             "lmax_5_max_mm": round(gnl_l5.fit_residual_max_mm, 5),
+        },
+        "v03_mronly_dvh_margin_certifier": {
+            "certificate": dvh_cert.model_dump(mode="json"),
+            "dicom_rt_roundtrip": rt_dicom_metrics,
         },
         "v02_advanced_physics": {
             "multibeam_7field_ere": mb_ere_7.model_dump(mode="json"),

@@ -15,7 +15,7 @@
 
 - **SynthRAD2023 Grand Challenge Dataset** (Thummerer et al., *Medical Physics* 2023, DOI: `10.1002/mp.16529`):
   - Multi-center paired MRI/CBCT + CT NIfTI dataset (`mr.nii.gz`, `ct.nii.gz`, `mask.nii.gz`) hosted on Zenodo (Training: `10.5281/zenodo.7260705`; Validation: `10.5281/zenodo.7868168`).
-  - Note on upstream licensing: while the *Medical Physics* data descriptor is open access (CC BY 4.0), the multi-gigabyte Zenodo image archives are released under CC BY-NC 4.0. `mrphys-guard` provides native `nibabel` NIfTI loaders (`load_nifti_volume`) compatible with SynthRAD2023 directory layouts without redistributing CC BY-NC archives inside this Apache-2.0 repository.
+  - Note on upstream licensing: while the *Medical Physics* data descriptor is open access (CC BY 4.0), the multi-gigabyte Zenodo image archives are released under CC BY-NC 4.0. `mrphys-guard` provides native `nibabel` NIfTI loaders (`load_nifti_volume`) compatible with SynthRAD2023 directory layouts without redistributing large upstream archives inside this repository.
 
 ## 3. Verified Literature & Standards References (BibTeX)
 
@@ -98,5 +98,27 @@
   title       = {ASTM F2503 Standard Practice for Marking Medical Devices and Other Items for Safety in the Magnetic Resonance Environment},
   institution = {ASTM International},
   year        = {2020}
+}
+
+@article{vanherk2000margins,
+  author  = {van Herk, Marcel and Remeijer, Peter and Rasch, Coen and Lebesque, Joos V.},
+  title   = {The probability of correct target dosage: dose-population histograms for deriving treatment margins in radiotherapy},
+  journal = {International Journal of Radiation Oncology, Biology, Physics},
+  year    = {2000},
+  volume  = {47},
+  number  = {4},
+  pages   = {1121--1135},
+  doi     = {10.1016/S0360-3016(00)00518-6}
+}
+
+@article{ghiglia1994dct_unwrap,
+  author  = {Ghiglia, Dennis C. and Romero, Louis A.},
+  title   = {Robust two-dimensional weighted and unweighted phase unwrapping that uses fast transforms and iterative methods},
+  journal = {Journal of the Optical Society of America A},
+  year    = {1994},
+  volume  = {11},
+  number  = {1},
+  pages   = {107--117},
+  doi     = {10.1364/JOSAA.11.000107}
 }
 ```

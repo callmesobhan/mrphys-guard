@@ -502,6 +502,89 @@ class JacobianUnwarpReport(BaseModel):
     signal_conservation_ratio: float = Field(..., gt=0.0)
 
 
+class OrganDVHImpact(BaseModel):
+    """Per-organ Distortion-DVH and Worst-Case Dark-MRI sCT+ERE dosimetric impact."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    roi_name: str
+    roi_role: Literal["TARGET", "OAR"]
+    volume_cc: float = Field(..., ge=0.0)
+    planned_d98_gy: float = Field(..., ge=0.0)
+    distorted_d98_gy: float = Field(..., ge=0.0)
+    worst_case_d98_gy: float = Field(..., ge=0.0)
+    delta_d98_gy: float
+    delta_d98_pct: float
+    planned_dmean_gy: float = Field(..., ge=0.0)
+    distorted_dmean_gy: float = Field(..., ge=0.0)
+    planned_d0p1cc_gy: float = Field(..., ge=0.0)
+    distorted_d0p1cc_gy: float = Field(..., ge=0.0)
+    worst_case_d0p1cc_gy: float = Field(..., ge=0.0)
+    delta_d0p1cc_gy: float
+    delta_d0p1cc_pct: float
+    planned_tcp_or_ntcp_pct: float = Field(..., ge=0.0, le=100.0)
+    distorted_tcp_or_ntcp_pct: float = Field(..., ge=0.0, le=100.0)
+    worst_case_tcp_or_ntcp_pct: float = Field(..., ge=0.0, le=100.0)
+
+
+class DarkMRIAmbiguityCertificate(BaseModel):
+    """Physics-exact dark-MRI bone-vs-air identifiability & worst-case sCT+ERE blind-spot bound."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    dark_mri_threshold: float
+    ambiguous_voxel_count: int = Field(..., ge=0)
+    ambiguous_volume_cc: float = Field(..., ge=0.0)
+    ambiguous_body_fraction: float = Field(..., ge=0.0, le=1.0)
+    worst_case_wepl_error_mm: float = Field(..., ge=0.0)
+    worst_case_sct_attenuation_shift_pct: float = Field(..., ge=0.0)
+    worst_case_ere_interface_shift_pct: float = Field(..., ge=0.0)
+    worst_case_target_d98_loss_pct: float = Field(..., ge=0.0)
+    worst_case_oar_d0p1cc_increase_pct: float = Field(..., ge=0.0)
+    status: Literal["CERTIFIED_ROBUST", "MARGIN_ADJUSTMENT_REQUIRED", "UNSAFE_BLIND_SPOT"]
+    rationale: str
+
+
+class ReadoutAxisCandidate(BaseModel):
+    """Evaluation of one MRI readout axis & polarity (+X/-X/+Y/-Y/+Z/-Z) on DVH & van Herk margins."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    label: str
+    readout_axis: Literal[0, 1, 2]
+    readout_polarity: Literal[1, -1]
+    target_sigma_sys_mm: tuple[float, float, float]
+    anisotropic_ptv_margin_mm: tuple[float, float, float]
+    naive_isotropic_margin_mm: float = Field(..., ge=0.0)
+    target_delta_d98_gy: float
+    target_delta_d98_pct: float
+    oar_delta_d0p1cc_gy: float
+    oar_delta_d0p1cc_pct: float
+    folding_voxel_count: int = Field(..., ge=0)
+    composite_risk_score: float = Field(..., ge=0.0)
+
+
+class MROnlyDVHMarginCertificate(BaseModel):
+    """End-to-end MR-Only Physics-Ambiguity to DVH & Anisotropic van Herk PTV Margin Certificate."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    b0_T: float
+    bandwidth_hz_per_px: float
+    prescription_gy: float
+    baseline_readout_label: str
+    recommended_readout_label: str
+    recommended_anisotropic_margin_mm: tuple[float, float, float]
+    baseline_anisotropic_margin_mm: tuple[float, float, float]
+    oar_overdose_saved_gy: float
+    target_coverage_saved_gy: float
+    organ_impacts: list[OrganDVHImpact] = Field(default_factory=list)
+    dark_mri_certificate: DarkMRIAmbiguityCertificate
+    readout_candidates: list[ReadoutAxisCandidate] = Field(default_factory=list)
+    overall_certificate: Literal["CERTIFIED_ROBUST", "MARGIN_ADJUSTMENT_REQUIRED", "UNSAFE_BLIND_SPOT"]
+    summary: str
+
+
 class SafetyCSPVerdict(BaseModel):
     """Formal Constraint Satisfaction Problem (CSP) verdict for an MR protocol + implant."""
 

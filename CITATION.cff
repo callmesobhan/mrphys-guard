@@ -1,11 +1,14 @@
 cff-version: 1.2.0
-title: "mrphys-guard: 3D MRI Geometric Distortion, Synthetic-CT Physics Audit, ERE & Formal IEC 60601-2-33 RF/Implant Safety Engine"
-message: "If you use mrphys-guard in research or education, please cite this software and the underlying medical physics standards."
+title: "mrphys-guard: 3D MRI Geometric Distortion, Synthetic-CT Physics Audit, ERE, IEC 60601-2-33 Implant CSP & MR-Only Ambiguity-to-DVH Certifier"
+message: "Non-Commercial Research & Personal Use Only — citation is mandatory for any research publication or output using mrphys-guard."
 type: software
-version: "0.2.0"
+version: "0.3.0"
 date-released: "2026-11-24"
-license: Apache-2.0
+license-url: "https://github.com/callmesobhan/mrphys-guard/blob/main/LICENSE"
+repository-code: "https://github.com/callmesobhan/mrphys-guard"
 authors:
+  - family-names: Shahbazi
+    given-names: Sobhan
   - name: "mrphys-guard Contributors"
 keywords:
   - medical physics

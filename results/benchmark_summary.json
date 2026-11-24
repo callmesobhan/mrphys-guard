@@ -11,6 +11,226 @@
     "lmax_5_rms_mm": 0.03409,
     "lmax_5_max_mm": 0.07787
   },
+  "v03_mronly_dvh_margin_certifier": {
+    "certificate": {
+      "b0_T": 1.5,
+      "bandwidth_hz_per_px": 240.0,
+      "prescription_gy": 36.25,
+      "baseline_readout_label": "+Y (A\u2192P)",
+      "recommended_readout_label": "-Y (P\u2192A)",
+      "recommended_anisotropic_margin_mm": [
+        2.7,
+        9.019,
+        2.7
+      ],
+      "baseline_anisotropic_margin_mm": [
+        2.7,
+        9.021,
+        2.7
+      ],
+      "oar_overdose_saved_gy": 28.267,
+      "target_coverage_saved_gy": -10.073,
+      "organ_impacts": [
+        {
+          "roi_name": "Prostate_CTV",
+          "roi_role": "TARGET",
+          "volume_cc": 18.0,
+          "planned_d98_gy": 34.917,
+          "distorted_d98_gy": 18.639,
+          "worst_case_d98_gy": 18.039,
+          "delta_d98_gy": -16.278,
+          "delta_d98_pct": -44.91,
+          "planned_dmean_gy": 36.963,
+          "distorted_dmean_gy": 34.673,
+          "planned_d0p1cc_gy": 37.519,
+          "distorted_d0p1cc_gy": 37.519,
+          "worst_case_d0p1cc_gy": 36.312,
+          "delta_d0p1cc_gy": -0.0,
+          "delta_d0p1cc_pct": -0.0,
+          "planned_tcp_or_ntcp_pct": 90.0,
+          "distorted_tcp_or_ntcp_pct": 11.0,
+          "worst_case_tcp_or_ntcp_pct": 8.69
+        },
+        {
+          "roi_name": "Rectal_Wall",
+          "roi_role": "OAR",
+          "volume_cc": 16.938,
+          "planned_d98_gy": 0.0,
+          "distorted_d98_gy": 0.0,
+          "worst_case_d98_gy": 0.0,
+          "delta_d98_gy": 0.0,
+          "delta_d98_pct": 0.0,
+          "planned_dmean_gy": 0.741,
+          "distorted_dmean_gy": 2.268,
+          "planned_d0p1cc_gy": 12.349,
+          "distorted_d0p1cc_gy": 35.773,
+          "worst_case_d0p1cc_gy": 39.866,
+          "delta_d0p1cc_gy": 23.424,
+          "delta_d0p1cc_pct": 64.62,
+          "planned_tcp_or_ntcp_pct": 0.0,
+          "distorted_tcp_or_ntcp_pct": 0.74,
+          "worst_case_tcp_or_ntcp_pct": 2.87
+        }
+      ],
+      "dark_mri_certificate": {
+        "dark_mri_threshold": 0.14,
+        "ambiguous_voxel_count": 4836,
+        "ambiguous_volume_cc": 75.562,
+        "ambiguous_body_fraction": 0.083,
+        "worst_case_wepl_error_mm": 9.193,
+        "worst_case_sct_attenuation_shift_pct": 3.217,
+        "worst_case_ere_interface_shift_pct": 8.226,
+        "worst_case_target_d98_loss_pct": 3.217,
+        "worst_case_oar_d0p1cc_increase_pct": 11.443,
+        "status": "MARGIN_ADJUSTMENT_REQUIRED",
+        "rationale": "Moderate dark-MRI blind spot (75.6 cc, WEPL bound 9.2 mm, OAR ERE+sCT +11.4%): UTE/ZTE bone anchor or anisotropic margin adjustment advised."
+      },
+      "readout_candidates": [
+        {
+          "label": "+X (L\u2192R)",
+          "readout_axis": 0,
+          "readout_polarity": 1,
+          "target_sigma_sys_mm": [
+            3.2305,
+            0.0004,
+            0.0008
+          ],
+          "anisotropic_ptv_margin_mm": [
+            9.02,
+            2.7,
+            2.7
+          ],
+          "naive_isotropic_margin_mm": 9.02,
+          "target_delta_d98_gy": -25.3771,
+          "target_delta_d98_pct": -70.006,
+          "oar_delta_d0p1cc_gy": 7.973,
+          "oar_delta_d0p1cc_pct": 21.995,
+          "folding_voxel_count": 1972,
+          "composite_risk_score": 76.7936
+        },
+        {
+          "label": "-X (R\u2192L)",
+          "readout_axis": 0,
+          "readout_polarity": -1,
+          "target_sigma_sys_mm": [
+            3.2305,
+            0.0004,
+            0.0008
+          ],
+          "anisotropic_ptv_margin_mm": [
+            9.02,
+            2.7,
+            2.7
+          ],
+          "naive_isotropic_margin_mm": 9.02,
+          "target_delta_d98_gy": -25.3778,
+          "target_delta_d98_pct": -70.008,
+          "oar_delta_d0p1cc_gy": 7.9728,
+          "oar_delta_d0p1cc_pct": 21.994,
+          "folding_voxel_count": 1972,
+          "composite_risk_score": 76.7946
+        },
+        {
+          "label": "+Y (A\u2192P)",
+          "readout_axis": 1,
+          "readout_polarity": 1,
+          "target_sigma_sys_mm": [
+            0.0003,
+            3.2308,
+            0.0008
+          ],
+          "anisotropic_ptv_margin_mm": [
+            2.7,
+            9.021,
+            2.7
+          ],
+          "naive_isotropic_margin_mm": 9.021,
+          "target_delta_d98_gy": -16.2784,
+          "target_delta_d98_pct": -44.906,
+          "oar_delta_d0p1cc_gy": 23.4241,
+          "oar_delta_d0p1cc_pct": 64.618,
+          "folding_voxel_count": 1980,
+          "composite_risk_score": 97.2403
+        },
+        {
+          "label": "-Y (P\u2192A)",
+          "readout_axis": 1,
+          "readout_polarity": -1,
+          "target_sigma_sys_mm": [
+            0.0003,
+            3.2302,
+            0.0008
+          ],
+          "anisotropic_ptv_margin_mm": [
+            2.7,
+            9.019,
+            2.7
+          ],
+          "naive_isotropic_margin_mm": 9.019,
+          "target_delta_d98_gy": -26.3515,
+          "target_delta_d98_pct": -72.694,
+          "oar_delta_d0p1cc_gy": -4.843,
+          "oar_delta_d0p1cc_pct": -13.36,
+          "folding_voxel_count": 1968,
+          "composite_risk_score": 58.8018
+        },
+        {
+          "label": "+Z (I\u2192S)",
+          "readout_axis": 2,
+          "readout_polarity": 1,
+          "target_sigma_sys_mm": [
+            0.0003,
+            0.0004,
+            3.2312
+          ],
+          "anisotropic_ptv_margin_mm": [
+            2.7,
+            2.7,
+            9.022
+          ],
+          "naive_isotropic_margin_mm": 9.022,
+          "target_delta_d98_gy": -22.5629,
+          "target_delta_d98_pct": -62.242,
+          "oar_delta_d0p1cc_gy": 22.5664,
+          "oar_delta_d0p1cc_pct": 62.252,
+          "folding_voxel_count": 2270,
+          "composite_risk_score": 108.2451
+        },
+        {
+          "label": "-Z (S\u2192I)",
+          "readout_axis": 2,
+          "readout_polarity": -1,
+          "target_sigma_sys_mm": [
+            0.0003,
+            0.0004,
+            3.2297
+          ],
+          "anisotropic_ptv_margin_mm": [
+            2.7,
+            2.7,
+            9.018
+          ],
+          "naive_isotropic_margin_mm": 9.018,
+          "target_delta_d98_gy": -22.5632,
+          "target_delta_d98_pct": -62.243,
+          "oar_delta_d0p1cc_gy": 22.5673,
+          "oar_delta_d0p1cc_pct": 62.255,
+          "folding_voxel_count": 2270,
+          "composite_risk_score": 108.2473
+        }
+      ],
+      "overall_certificate": "UNSAFE_BLIND_SPOT",
+      "summary": "UNSAFE_BLIND_SPOT: Switching readout from +Y (A\u2192P) to -Y (P\u2192A) changes target Delta_D98 from -16.28 Gy to -26.35 Gy and OAR Delta_D0.1cc from +23.42 Gy to -4.84 Gy; recommended anisotropic van Herk PTV margin = (2.7, 9.019, 2.7) mm."
+    },
+    "dicom_rt_roundtrip": {
+      "rtdose_max_abs_err_gy": 1.7414904925578336e-08,
+      "rtstruct_ctv_dice": 1.0,
+      "rtstruct_rois_recovered": [
+        "Prostate_CTV",
+        "Rectal_Wall"
+      ]
+    }
+  },
   "v02_advanced_physics": {
     "multibeam_7field_ere": {
       "b0_T": 1.5,
@@ -628,39 +848,39 @@
     "record_count": 3,
     "records": [
       {
-        "record_id": "mrpg-0001-5a885ebe",
-        "timestamp_utc": "2026-11-24T19:48:33.692639+00:00",
+        "record_id": "mrpg-0001-ddea5765",
+        "timestamp_utc": "2026-11-24T21:44:46.805744+00:00",
         "engine_version": "0.1.0",
         "operation": "benchmark_lorentz_sphere",
         "data_origin": "SYNTHETIC_PHYSICS_FIXTURE",
         "input_sha256": "5638850a24b3746bd7e0f2e705c1eab8eab7ed11dca8e22b133fb9cd2df3cce4",
         "output_sha256": "eac06b6b6ffa9c97cb1f7c8a78c5f67d22334b98db6eb33699ae9712d0905a7c",
         "previous_record_sha256": null,
-        "record_sha256": "8bda25f1eba8a5818025fb55a87054fd204cfda1bfd2729b57e7f0a20e4055a7",
+        "record_sha256": "eba3f5cc70a9b3c224eef440b7c1ef8a561936aa9a020489d750e9b7f0453b11",
         "metadata": {}
       },
       {
-        "record_id": "mrpg-0002-fcd11a44",
-        "timestamp_utc": "2026-11-24T19:48:34.160221+00:00",
+        "record_id": "mrpg-0002-0f77d5de",
+        "timestamp_utc": "2026-11-24T21:44:47.270902+00:00",
         "engine_version": "0.1.0",
         "operation": "benchmark_3d_distortion",
         "data_origin": "SYNTHETIC_PHYSICS_FIXTURE",
         "input_sha256": "32af787fcc435a313097bf5a3eed78889568025a208c1d36bc75da0e0a9c7fdb",
         "output_sha256": "bdb10bc233e81a0b9969fbe9a6400ad296e48245b3e66047da454c68e22fbde9",
-        "previous_record_sha256": "8bda25f1eba8a5818025fb55a87054fd204cfda1bfd2729b57e7f0a20e4055a7",
-        "record_sha256": "b8d2fc5759e73687ec4f1d6cba165dd940f06d9f0525b45403384bae7ec77c9f",
+        "previous_record_sha256": "eba3f5cc70a9b3c224eef440b7c1ef8a561936aa9a020489d750e9b7f0453b11",
+        "record_sha256": "9c200bc7a2414790d366a8b92c96b6917c9dd21ed09c5df6aacb24db2d0689ab",
         "metadata": {}
       },
       {
-        "record_id": "mrpg-0003-68cea3cf",
-        "timestamp_utc": "2026-11-24T19:48:35.888132+00:00",
+        "record_id": "mrpg-0003-0776b268",
+        "timestamp_utc": "2026-11-24T21:44:49.123617+00:00",
         "engine_version": "0.1.0",
         "operation": "benchmark_public_ctmr_brain",
         "data_origin": "PUBLIC_OPEN_CLINICAL",
         "input_sha256": "446f815214baa5517ddb495e7b35e4743df44a97367393bf70a08c46719e74db",
         "output_sha256": "ddde2cf7b9853cf4c50ac1e3a520982ab85a635968662ee76be41124cd637c07",
-        "previous_record_sha256": "b8d2fc5759e73687ec4f1d6cba165dd940f06d9f0525b45403384bae7ec77c9f",
-        "record_sha256": "08b484199360b23f582e01077b7c1c116cda5ff21f881a7b1972361bd4caa28e",
+        "previous_record_sha256": "9c200bc7a2414790d366a8b92c96b6917c9dd21ed09c5df6aacb24db2d0689ab",
+        "record_sha256": "9614060f0df91ad6a10fe480110c01b8d6b738a63a10baada80b2b4a908cbddf",
         "metadata": {}
       }
     ]

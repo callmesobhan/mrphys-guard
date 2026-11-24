@@ -134,7 +134,7 @@ def test_mcp_jsonrpc_lifecycle_and_all_six_tools() -> None:
     list_resp = handle_jsonrpc_request({"jsonrpc": "2.0", "id": 3, "method": "tools/list"})
     assert list_resp is not None
     tools = list_resp["result"]["tools"]
-    assert len(tools) == len(MCP_TOOLS) == 8
+    assert len(tools) == len(MCP_TOOLS) == 9
     tool_names = {t["name"] for t in tools}
     assert tool_names == {
         "mrphys_solve_3d_distortion",
@@ -145,6 +145,7 @@ def test_mcp_jsonrpc_lifecycle_and_all_six_tools() -> None:
         "mrphys_run_sobol_sensitivity",
         "mrphys_multibeam_ere_optimize",
         "mrphys_verify_multi_implant_csp",
+        "mrphys_certify_mronly_dvh_margins",
     }
 
     # 1. Lookup implant profile

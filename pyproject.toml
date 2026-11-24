@@ -4,13 +4,14 @@ build-backend = "hatchling.build"
 
 [project]
 name = "mrphys-guard"
-version = "0.2.0"
-description = "3D MRI Geometric Distortion, Synthetic-CT Physics Audit, Electron-Return-Effect (ERE) & Formal IEC 60601-2-33 RF/Implant Safety Constraint Engine with Agent Harness & MCP Server"
+version = "0.3.0"
+description = "3D MRI Geometric Distortion, Synthetic-CT Physics Audit, ERE, Formal IEC 60601-2-33 Implant CSP & MR-Only Ambiguity-to-DVH / Anisotropic Margin Certifier"
 readme = "README.md"
-license = { text = "Apache-2.0" }
+license = { file = "LICENSE" }
 requires-python = ">=3.11"
 authors = [
-  { name = "mrphys-guard Contributors" }
+  { name = "Sobhan Shahbazi" },
+  { name = "mrphys-guard Contributors" },
 ]
 keywords = [
   "medical-physics",
@@ -21,12 +22,14 @@ keywords = [
   "iec-60601-2-33",
   "astm-f2503",
   "aapm-tg284",
+  "dvh",
+  "ptv-margin",
   "mcp",
 ]
 classifiers = [
   "Development Status :: 4 - Beta",
   "Intended Audience :: Science/Research",
-  "License :: OSI Approved :: Apache Software License",
+  "License :: Other/Proprietary License",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
   "Topic :: Scientific/Engineering :: Medical Science Apps.",

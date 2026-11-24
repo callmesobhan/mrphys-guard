@@ -21,6 +21,11 @@ from mrphys_guard.distortion_solver import (
     fit_spherical_harmonic_gnl,
     generate_synthetic_grid_phantom,
 )
+from mrphys_guard.dvh_margin_certifier import (
+    build_clinical_srs_dose_grid,
+    build_rectal_wall_oar_mask,
+    certify_mronly_dvh_and_anisotropic_margins,
+)
 from mrphys_guard.harness.agent_orchestrator import (
     CoDesignScenario,
     MRSequenceCoDesignAgent,
@@ -45,7 +50,7 @@ from mrphys_guard.sobol_sensitivity import run_mr_uncertainty_sobol_suite
 
 SERVER_INFO = {
     "name": "mrphys-guard-mcp",
-    "version": "0.2.0",
+    "version": "0.3.0",
     "notice": "RESEARCH SOFTWARE — NOT A MEDICAL DEVICE.",
 }
 
@@ -183,6 +188,24 @@ MCP_TOOLS: list[dict[str, Any]] = [
             },
         },
     },
+    {
+        "name": "mrphys_certify_mronly_dvh_margins",
+        "description": (
+            "Propagate 3D MRI distortion (GNL + susceptibility) and dark-MRI sCT+ERE ambiguity "
+            "into organ Distortion-DVH (Target D98%, OAR D0.1cc, TCP/NTCP), anisotropic van Herk "
+            "PTV margins (Mx, My, Mz), and optimal readout axis/polarity selection."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "b0_T": {"type": "number", "default": 1.5},
+                "bandwidth_hz_per_px": {"type": "number", "default": 240.0},
+                "prescription_gy": {"type": "number", "default": 36.25},
+                "grid_size": {"type": "integer", "default": 32},
+                "include_bilateral_hip_prostheses": {"type": "boolean", "default": True},
+            },
+        },
+    },
 ]
 
 
@@ -313,6 +336,48 @@ def _dispatch_tool(name: str, arguments: dict[str, Any]) -> dict[str, Any]:
         sequences = [MRSequenceSpec(**s) for s in arguments["sequences"]]
         mv = verify_multi_implant_safety_csp(scanner, sequences, implants)
         result = mv.model_dump(mode="json")
+
+    elif name == "mrphys_certify_mronly_dvh_margins":
+        n = int(arguments.get("grid_size", 32))
+        vox = (160.0 / n, 160.0 / n, 120.0 / max(16, int(n * 0.75)))
+        shape = (n, n, max(16, int(n * 0.75)))
+        phantom = build_pelvic_prostate_susceptibility_phantom(
+            shape=shape,
+            voxel_size_mm=vox,
+            include_rectal_gas=True,
+            include_bilateral_hip_prostheses=bool(
+                arguments.get("include_bilateral_hip_prostheses", True)
+            ),
+        )
+        oar_wall = build_rectal_wall_oar_mask(
+            phantom["rectal_gas_mask"], phantom["body_mask"], phantom["prostate_mask"]
+        )
+        rx_gy = float(arguments.get("prescription_gy", 36.25))
+        dose = build_clinical_srs_dose_grid(
+            phantom["prostate_mask"], oar_wall, vox, prescription_gy=rx_gy
+        )
+        seq = MRSequenceSpec(
+            name="MCP_MROnly_DVH",
+            b0_T=float(arguments.get("b0_T", 1.5)),
+            bandwidth_hz_per_px=float(arguments.get("bandwidth_hz_per_px", 240.0)),
+            voxel_size_mm=vox,
+            readout_axis=1,
+            phase_encode_axis=0,
+            tr_ms=15.0,
+            te_ms=4.5,
+        )
+        cert, _ = certify_mronly_dvh_and_anisotropic_margins(
+            chi_si=phantom["chi_si"],
+            mri_volume=phantom["mri_t1"],
+            ct_or_sct_hu=phantom["ct_hu"],
+            dose_gy=dose,
+            target_mask=phantom["prostate_mask"],
+            oar_mask=oar_wall,
+            body_mask=phantom["body_mask"],
+            sequence=seq,
+            prescription_gy=rx_gy,
+        )
+        result = cert.model_dump(mode="json")
 
     else:
         raise KeyError(f"Unknown MCP tool: {name}")

@@ -1,12 +1,15 @@
 """JSON-RPC 2.0 stdio Model Context Protocol (MCP) Server for mrphys-guard.
 
-Exposes 6 typed, provenance-gated medical physics tools:
+Exposes 9 typed, provenance-gated medical physics tools:
 1. mrphys_solve_3d_distortion
 2. mrphys_audit_sct_and_ere
 3. mrphys_verify_implant_csp
 4. mrphys_codesign_safe_sequence
 5. mrphys_lookup_implant_profile
 6. mrphys_run_sobol_sensitivity
+7. mrphys_multibeam_ere_optimize
+8. mrphys_verify_multi_implant_csp
+9. mrphys_certify_mronly_dvh_margins
 """
 
 from __future__ import annotations
@@ -57,10 +60,13 @@ SERVER_INFO = {
 MCP_TOOLS: list[dict[str, Any]] = [
     {
         "name": "mrphys_solve_3d_distortion",
-        "description": (
-            "Solve 3D MRI gradient nonlinearity (l<=5 solid spherical harmonics) and k-space "
-            "Lorentz-sphere susceptibility B0 dipole convolution on a pelvic prostate MR-only phantom."
-        ),
+        "description": "Solve 3D MRI gradient nonlinearity (l<=5 solid spherical harmonics) and k-space Lorentz-sphere susceptibility B0 dipole convolution on a pelvic prostate MR-only phantom.",
+        "annotations": {
+            "readOnlyHint": True,
+            "destructiveHint": False,
+            "idempotentHint": True,
+            "openWorldHint": False,
+        },
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -75,10 +81,13 @@ MCP_TOOLS: list[dict[str, Any]] = [
     },
     {
         "name": "mrphys_audit_sct_and_ere",
-        "description": (
-            "Audit synthetic-CT (sCT) physics plausibility (bone-to-air swaps, missing metal, "
-            "body-contour truncation) and compute 1.5T/0.35T Lorentz-force ERE boundary hotspot risk."
-        ),
+        "description": "Audit synthetic-CT (sCT) physics plausibility (bone-to-air swaps, missing metal, body-contour truncation) and compute 1.5T/0.35T Lorentz-force ERE boundary hotspot risk.",
+        "annotations": {
+            "readOnlyHint": True,
+            "destructiveHint": False,
+            "idempotentHint": True,
+            "openWorldHint": False,
+        },
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -92,10 +101,13 @@ MCP_TOOLS: list[dict[str, Any]] = [
     },
     {
         "name": "mrphys_verify_implant_csp",
-        "description": (
-            "Formally verify a multi-sequence MRI protocol against IEC 60601-2-33 / ASTM F2503 "
-            "implant constraints (B0, dB/dx, B1+rms, SAR, slew rate, dB/dt, active scan time)."
-        ),
+        "description": "Formally verify a multi-sequence MRI protocol against IEC 60601-2-33 / ASTM F2503 implant constraints (B0, dB/dx, B1+rms, SAR, slew rate, dB/dt, active scan time).",
+        "annotations": {
+            "readOnlyHint": True,
+            "destructiveHint": False,
+            "idempotentHint": True,
+            "openWorldHint": False,
+        },
         "inputSchema": {
             "type": "object",
             "required": ["implant_id", "sequences"],
@@ -109,10 +121,13 @@ MCP_TOOLS: list[dict[str, Any]] = [
     },
     {
         "name": "mrphys_codesign_safe_sequence",
-        "description": (
-            "Run the closed-loop MR sequence & safety co-design agent with independent Critic-Verifier "
-            "gate on a preset or custom high-risk clinical scenario."
-        ),
+        "description": "Run the closed-loop MR sequence & safety co-design agent with independent Critic-Verifier gate on a preset or custom high-risk clinical scenario.",
+        "annotations": {
+            "readOnlyHint": True,
+            "destructiveHint": False,
+            "idempotentHint": True,
+            "openWorldHint": False,
+        },
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -127,10 +142,13 @@ MCP_TOOLS: list[dict[str, Any]] = [
     },
     {
         "name": "mrphys_lookup_implant_profile",
-        "description": (
-            "Lookup built-in generic ASTM F2503 / IEC 60601-2-33 MR-conditional literature device "
-            "profiles (pass device_id or omit to list all profiles)."
-        ),
+        "description": "Lookup built-in generic ASTM F2503 / IEC 60601-2-33 MR-conditional literature device profiles (pass device_id or omit to list all profiles).",
+        "annotations": {
+            "readOnlyHint": True,
+            "destructiveHint": False,
+            "idempotentHint": True,
+            "openWorldHint": False,
+        },
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -140,10 +158,13 @@ MCP_TOOLS: list[dict[str, Any]] = [
     },
     {
         "name": "mrphys_run_sobol_sensitivity",
-        "description": (
-            "Run exact Saltelli-Jansen QMC global Sobol' sensitivity analysis (S_1, S_T) over "
-            "receiver bandwidth, air-cavity susceptibility, GNL residual, and sCT HU error."
-        ),
+        "description": "Run exact Saltelli-Jansen QMC global Sobol' sensitivity analysis (S_1, S_T) over receiver bandwidth, air-cavity susceptibility, GNL residual, and sCT HU error.",
+        "annotations": {
+            "readOnlyHint": True,
+            "destructiveHint": False,
+            "idempotentHint": True,
+            "openWorldHint": False,
+        },
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -155,10 +176,13 @@ MCP_TOOLS: list[dict[str, Any]] = [
     },
     {
         "name": "mrphys_multibeam_ere_optimize",
-        "description": (
-            "Evaluate multi-beam IMRT/VMAT opposing-beam Lorentz-force ERE cancellation and "
-            "recommend lowest-ERE gantry angles at 1.5T or 0.35T."
-        ),
+        "description": "Evaluate multi-beam IMRT/VMAT opposing-beam Lorentz-force ERE cancellation and recommend lowest-ERE gantry angles at 1.5T or 0.35T.",
+        "annotations": {
+            "readOnlyHint": True,
+            "destructiveHint": False,
+            "idempotentHint": True,
+            "openWorldHint": False,
+        },
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -174,10 +198,13 @@ MCP_TOOLS: list[dict[str, Any]] = [
     },
     {
         "name": "mrphys_verify_multi_implant_csp",
-        "description": (
-            "Formally verify a multi-sequence MR protocol simultaneously across multiple "
-            "co-existing implants, returning intersected limits, IEC PNS %, and UNSAT conflict cores."
-        ),
+        "description": "Formally verify a multi-sequence MR protocol simultaneously across multiple co-existing implants, returning intersected limits, IEC PNS %, and UNSAT conflict cores.",
+        "annotations": {
+            "readOnlyHint": True,
+            "destructiveHint": False,
+            "idempotentHint": True,
+            "openWorldHint": False,
+        },
         "inputSchema": {
             "type": "object",
             "required": ["implant_ids", "sequences"],
@@ -190,11 +217,13 @@ MCP_TOOLS: list[dict[str, Any]] = [
     },
     {
         "name": "mrphys_certify_mronly_dvh_margins",
-        "description": (
-            "Propagate 3D MRI distortion (GNL + susceptibility) and dark-MRI sCT+ERE ambiguity "
-            "into organ Distortion-DVH (Target D98%, OAR D0.1cc, TCP/NTCP), anisotropic van Herk "
-            "PTV margins (Mx, My, Mz), and optimal readout axis/polarity selection."
-        ),
+        "description": "Propagate 3D MRI distortion (GNL + susceptibility) and dark-MRI sCT+ERE ambiguity into organ Distortion-DVH (Target D98%, OAR D0.1cc, TCP/NTCP), anisotropic van Herk PTV margins (Mx, My, Mz), and optimal readout axis/polarity selection.",
+        "annotations": {
+            "readOnlyHint": True,
+            "destructiveHint": False,
+            "idempotentHint": True,
+            "openWorldHint": False,
+        },
         "inputSchema": {
             "type": "object",
             "properties": {

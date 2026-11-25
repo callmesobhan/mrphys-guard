@@ -147,6 +147,14 @@ def test_mcp_jsonrpc_lifecycle_and_all_six_tools() -> None:
         "mrphys_verify_multi_implant_csp",
         "mrphys_certify_mronly_dvh_margins",
     }
+    for tool in tools:
+        assert isinstance(tool["description"], str) and len(tool["description"]) > 20
+        assert tool["annotations"] == {
+            "readOnlyHint": True,
+            "destructiveHint": False,
+            "idempotentHint": True,
+            "openWorldHint": False,
+        }
 
     # 1. Lookup implant profile
     r1 = handle_jsonrpc_request(
@@ -250,6 +258,21 @@ def test_mcp_jsonrpc_lifecycle_and_all_six_tools() -> None:
         }
     )
     assert r8 is not None and r8["result"]["structuredContent"]["result"]["verdict"] == "PASS"
+
+    # 9. MR-only DVH & anisotropic margin certifier
+    r9 = handle_jsonrpc_request(
+        {
+            "jsonrpc": "2.0",
+            "id": 18,
+            "method": "tools/call",
+            "params": {
+                "name": "mrphys_certify_mronly_dvh_margins",
+                "arguments": {"grid_size": 24, "b0_T": 1.5, "bandwidth_hz_per_px": 240.0},
+            },
+        }
+    )
+    assert r9 is not None and r9["result"]["isError"] is False
+    assert "baseline_readout_label" in r9["result"]["structuredContent"]["result"]
 
     # Unknown method returns standard JSON-RPC -32601 error
     err_resp = handle_jsonrpc_request({"jsonrpc": "2.0", "id": 99, "method": "unknown/method"})

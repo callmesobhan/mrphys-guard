@@ -2,13 +2,13 @@
 
 **3D MRI Geometric Distortion, Synthetic-CT Physics Audit, Electron-Return-Effect (ERE), Formal IEC 60601-2-33 RF/Implant Safety CSP & MR-Only Ambiguity-to-DVH / Anisotropic Margin Certifier — with Agent Harness & MCP Server**
 
-[![Python 3.11 | 3.12](https://img.shields.io/badge/python-3.11%20%7C%203.12-0072B2.svg)](pyproject.toml)
-[![License: Non-Commercial Research & Personal Use Only](https://img.shields.io/badge/license-Non--Commercial%20Research%20(Citation%20Required)%20%26%20Personal%20Use-D55E00.svg)](LICENSE)
-[![Tests: 37 Passed](https://img.shields.io/badge/pytest-37%20passed%20%7C%200%20warnings-009E73.svg)](tests/)
-[![Coverage: 92.9%](https://img.shields.io/badge/coverage-92.9%25-0072B2.svg)](docs/AUDIT_REPORT.md)
-[![Ruff: 0 Errors](https://img.shields.io/badge/ruff-0%20errors-009E73.svg)](pyproject.toml)
-[![MCP: JSON-RPC 2.0](https://img.shields.io/badge/MCP-9%20provenance--gated%20tools-E69F00.svg)](src/mrphys_guard/harness/mcp_server.py)
-[![Research Software](https://img.shields.io/badge/status-Research%20Software%20%E2%80%94%20NOT%20A%20MEDICAL%20DEVICE-D55E00.svg)](LICENSE)
+[![Python 3.11 | 3.12](https://img.shields.io/badge/python-3.11%20%7C%203.12-2E3192?style=flat-square)](pyproject.toml)
+[![License: Non-Commercial Research & Personal Use Only](https://img.shields.io/badge/license-Non--Commercial%20Research%20(Citation%20Required)%20%26%20Personal%20Use-C2185B?style=flat-square)](LICENSE)
+[![Tests: 37 Passed](https://img.shields.io/badge/pytest-37%20passed%20%7C%200%20warnings-00897B?style=flat-square)](tests/)
+[![Coverage: 92.9%](https://img.shields.io/badge/coverage-92.9%25-0288D1?style=flat-square)](docs/AUDIT_REPORT.md)
+[![Ruff: 0 Errors](https://img.shields.io/badge/ruff-0%20errors-00897B?style=flat-square)](pyproject.toml)
+[![MCP: JSON-RPC 2.0](https://img.shields.io/badge/MCP-9%20provenance--gated%20tools-7E57C2?style=flat-square)](src/mrphys_guard/harness/mcp_server.py)
+[![Research Software](https://img.shields.io/badge/status-Research%20Software%20%E2%80%94%20NOT%20A%20MEDICAL%20DEVICE-C2185B?style=flat-square)](LICENSE)
 
 > **LICENSE & MEDICAL DEVICE NOTICE:**
 > - **Non-Commercial Research (with Mandatory Citation) & Personal Use Only:** Commercial use is **strictly prohibited** without separate written permission. Any research publication, preprint, thesis, or benchmark using `mrphys-guard` **must** cite [`CITATION.cff`](CITATION.cff) and link this repository. See [`LICENSE`](LICENSE).
